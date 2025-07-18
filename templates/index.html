@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord - Job Ad Scraper{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-tachometer-alt"></i> Tableau de bord</h1>
+        <p class="lead">Interface de gestion du scraper d'emploi intelligent</p>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ stats.total_jobs }}</div>
+            <div class="stats-label">Offres totales</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ stats.avg_score }}%</div>
+            <div class="stats-label">Score moyen</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ stats.unique_companies }}</div>
+            <div class="stats-label">Entreprises</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ stats.unique_sources }}</div>
+            <div class="stats-label">Sources</div>
+        </div>
+    </div>
+</div>
+
+<!-- Contrôles de scraping -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-play"></i> Contrôle du scraping</h5>
+            </div>
+            <div class="card-body">
+                {% if scraper_status.running %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-spinner fa-spin"></i> 
+                        <strong>Scraping en cours...</strong>
+                        <div class="progress-container">
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" 
+                                     id="progress-bar"
+                                     style="width: {{ scraper_status.progress }}%"
+                                     aria-valuenow="{{ scraper_status.progress }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    {{ scraper_status.progress }}%
+                                </div>
+                            </div>
+                            <small class="text-muted mt-2" id="progress-text">
+                                {{ scraper_status.current_task or 'En cours...' }}
+                            </small>
+                        </div>
+                    </div>
+                {% elif scraper_status.error %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>Erreur:</strong> {{ scraper_status.error }}
+                    </div>
+                    <button class="btn btn-primary" onclick="startScraping()">
+                        <i class="fas fa-redo"></i> Relancer le scraping
+                    </button>
+                {% else %}
+                    <div class="alert alert-secondary">
+                        <i class="fas fa-pause"></i> 
+                        <strong>Scraper inactif</strong>
+                        {% if scraper_status.end_time %}
+                            <br><small>Dernière exécution: {{ scraper_status.end_time }}</small>
+                        {% endif %}
+                    </div>
+                    <button class="btn btn-success btn-lg" onclick="startScraping()">
+                        <i class="fas fa-play"></i> Démarrer le scraping
+                    </button>
+                {% endif %}
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6>Informations de session</h6>
+                        {% if scraper_status.start_time %}
+                            <p><strong>Démarrage:</strong> {{ scraper_status.start_time.strftime('%H:%M:%S') }}</p>
+                        {% endif %}
+                        {% if scraper_status.end_time %}
+                            <p><strong>Fin:</strong> {{ scraper_status.end_time.strftime('%H:%M:%S') }}</p>
+                            <p><strong>Durée:</strong> {{ ((scraper_status.end_time - scraper_status.start_time).total_seconds() / 60) | round(1) }} minutes</p>
+                        {% endif %}
+                        {% if scraper_status.total_jobs %}
+                            <p><strong>Offres trouvées:</strong> {{ scraper_status.total_jobs }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Actions rapides</h6>
+                        <a href="{{ url_for('jobs') }}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-briefcase"></i> Voir les offres
+                        </a>
+                        <a href="{{ url_for('config') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-cog"></i> Configuration
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Offres récentes -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-star"></i> Offres récentes (Top 5)</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_jobs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Poste</th>
+                                    <th>Entreprise</th>
+                                    <th>Lieu</th>
+                                    <th>Score</th>
+                                    <th>Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in recent_jobs %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ job.title }}</strong>
+                                        {% if job.url %}
+                                            <br><small><a href="{{ job.url }}" target="_blank" class="text-muted">
+                                                <i class="fas fa-external-link-alt"></i> Voir l'offre
+                                            </a></small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ job.company }}</td>
+                                    <td>{{ job.location or 'Non spécifié' }}</td>
+                                    <td>
+                                        <span class="job-score {% if job.match_score >= 75 %}high{% elif job.match_score >= 50 %}medium{% else %}low{% endif %}">
+                                            {{ job.match_score | round(1) }}%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ job.source }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center">
+                        <a href="{{ url_for('jobs') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-right"></i> Voir toutes les offres
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5>Aucune offre trouvée</h5>
+                        <p class="text-muted">Lancez le scraping pour commencer à trouver des offres d'emploi.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Top entreprises -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-building"></i> Top entreprises</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.top_companies %}
+                    <ul class="list-group list-group-flush">
+                        {% for company in stats.top_companies[:5] %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ company.company }}
+                            <span class="badge bg-primary rounded-pill">{{ company.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Aucune donnée disponible</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Top sources -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-globe"></i> Sources</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.top_sources %}
+                    <ul class="list-group list-group-flush">
+                        {% for source in stats.top_sources %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ source.source }}
+                            <span class="badge bg-secondary rounded-pill">{{ source.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Aucune donnée disponible</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sessions récentes -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-clock"></i> Sessions récentes</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Durée</th>
+                                    <th>Offres</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in recent_sessions %}
+                                <tr>
+                                    <td>{{ session.created_at }}</td>
+                                    <td>
+                                        {% if session.duration_seconds %}
+                                            {{ (session.duration_seconds / 60) | round(1) }} min
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ session.unique_jobs or 0 }}</td>
+                                    <td>
+                                        {% if session.status == 'completed' %}
+                                            <span class="badge bg-success">Terminé</span>
+                                        {% elif session.status == 'running' %}
+                                            <span class="badge bg-warning">En cours</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Erreur</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center">
+                        <a href="{{ url_for('sessions') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-right"></i> Voir l'historique complet
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucune session enregistrée</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function startScraping() {
+    if (confirm('Êtes-vous sûr de vouloir démarrer le scraping ? Cela peut prendre 30-60 minutes.')) {
+        fetch('/start_scraping', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Erreur: ' + data.error);
+            } else {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors du démarrage du scraping');
+        });
+    }
+}
+</script>
+{% endblock %}

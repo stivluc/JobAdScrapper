@@ -119,6 +119,11 @@ results/
 *.xlsx
 *.log
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Personal files
 CV_base_IngeFullStack.html
 *.pdf

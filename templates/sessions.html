@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Historique des sessions - Job Ad Scraper{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-history"></i> Historique des sessions</h1>
+        <p class="lead">Consultez l'historique de toutes les sessions de scraping</p>
+    </div>
+</div>
+
+<!-- Statistiques globales -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Statistiques globales</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="stats-card bg-primary">
+                            <div class="stats-number">{{ sessions|length }}</div>
+                            <div class="stats-label">Sessions totales</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card bg-success">
+                            <div class="stats-number">
+                                {{ sessions|selectattr('status', 'equalto', 'completed')|list|length }}
+                            </div>
+                            <div class="stats-label">Sessions réussies</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card bg-warning">
+                            <div class="stats-number">
+                                {% set total_jobs = sessions|selectattr('unique_jobs')|map(attribute='unique_jobs')|sum %}
+                                {{ total_jobs }}
+                            </div>
+                            <div class="stats-label">Offres totales</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card bg-info">
+                            <div class="stats-number">
+                                {% set total_duration = sessions|selectattr('duration_seconds')|map(attribute='duration_seconds')|sum %}
+                                {{ (total_duration / 3600) | round(1) }}h
+                            </div>
+                            <div class="stats-label">Temps total</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Liste des sessions -->
+<div class="row">
+    <div class="col-md-12">
+        {% if sessions %}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> Sessions de scraping</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date/Heure</th>
+                                    <th>Durée</th>
+                                    <th>Offres trouvées</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                <tr>
+                                    <td>
+                                        <strong>#{{ session.id }}</strong>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ session.created_at.split('T')[0] }}</strong><br>
+                                            <small class="text-muted">{{ session.created_at.split('T')[1].split('.')[0] }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if session.duration_seconds %}
+                                            {% set duration_minutes = (session.duration_seconds / 60) | round(1) %}
+                                            {% if duration_minutes >= 60 %}
+                                                {{ (duration_minutes / 60) | round(1) }}h {{ (duration_minutes % 60) | round(0) }}m
+                                            {% else %}
+                                                {{ duration_minutes }} min
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.unique_jobs %}
+                                            <span class="badge bg-success">{{ session.unique_jobs }} offres</span>
+                                            {% if session.total_jobs and session.total_jobs != session.unique_jobs %}
+                                                <br><small class="text-muted">{{ session.total_jobs }} au total</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.status == 'completed' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check"></i> Terminé
+                                            </span>
+                                        {% elif session.status == 'running' %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-spinner fa-spin"></i> En cours
+                                            </span>
+                                        {% elif session.status == 'error' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-exclamation-triangle"></i> Erreur
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ session.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="showSessionDetails({{ session.id }})">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                    <h4>Aucune session trouvée</h4>
+                    <p class="text-muted">Lancez votre premier scraping pour voir l'historique apparaître ici.</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Démarrer le scraping
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Graphique des performances -->
+{% if sessions %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-area"></i> Évolution des performances</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="performanceChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Répartition des statuts</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal pour les détails de session -->
+<div class="modal fade" id="sessionDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Détails de la session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="sessionDetailContent">
+                    <!-- Contenu chargé dynamiquement -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Affichage des détails de session
+function showSessionDetails(sessionId) {
+    const session = {{ sessions | tojson }}.find(s => s.id === sessionId);
+    
+    if (!session) {
+        alert('Session non trouvée');
+        return;
+    }
+    
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-info-circle"></i> Informations générales</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td>#${session.id}</td></tr>
+                    <tr><td><strong>Date de création:</strong></td><td>${session.created_at}</td></tr>
+                    <tr><td><strong>Heure de début:</strong></td><td>${session.start_time || 'N/A'}</td></tr>
+                    <tr><td><strong>Heure de fin:</strong></td><td>${session.end_time || 'N/A'}</td></tr>
+                    <tr><td><strong>Durée:</strong></td><td>${session.duration_seconds ? Math.round(session.duration_seconds / 60) + ' minutes' : 'N/A'}</td></tr>
+                    <tr><td><strong>Statut:</strong></td><td>${session.status}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-chart-bar"></i> Résultats</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Offres trouvées:</strong></td><td>${session.total_jobs || 0}</td></tr>
+                    <tr><td><strong>Offres uniques:</strong></td><td>${session.unique_jobs || 0}</td></tr>
+                    <tr><td><strong>Taux de déduplication:</strong></td><td>${session.total_jobs && session.unique_jobs ? Math.round((1 - session.unique_jobs / session.total_jobs) * 100) + '%' : 'N/A'}</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        ${session.error_message ? `
+            <div class="alert alert-danger mt-3">
+                <h6><i class="fas fa-exclamation-triangle"></i> Erreur</h6>
+                <p class="mb-0">${session.error_message}</p>
+            </div>
+        ` : ''}
+        
+        ${session.config_snapshot ? `
+            <div class="mt-3">
+                <h6><i class="fas fa-cog"></i> Configuration utilisée</h6>
+                <details>
+                    <summary>Voir la configuration</summary>
+                    <pre class="bg-light p-3 mt-2 rounded"><code>${JSON.stringify(JSON.parse(session.config_snapshot), null, 2)}</code></pre>
+                </details>
+            </div>
+        ` : ''}
+    `;
+    
+    document.getElementById('sessionDetailContent').innerHTML = content;
+    
+    const modal = new bootstrap.Modal(document.getElementById('sessionDetailModal'));
+    modal.show();
+}
+
+// Graphiques
+{% if sessions %}
+document.addEventListener('DOMContentLoaded', function() {
+    const sessions = {{ sessions | tojson }};
+    
+    // Graphique des performances
+    const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+    const performanceData = sessions.slice(0, 10).reverse().map(s => ({
+        x: s.created_at.split('T')[0],
+        y: s.unique_jobs || 0
+    }));
+    
+    new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Offres trouvées',
+                data: performanceData,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Graphique des statuts
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    const statusCounts = sessions.reduce((acc, s) => {
+        acc[s.status] = (acc[s.status] || 0) + 1;
+        return acc;
+    }, {});
+    
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(statusCounts),
+            datasets: [{
+                data: Object.values(statusCounts),
+                backgroundColor: [
+                    '#28a745', // completed
+                    '#dc3545', // error
+                    '#ffc107', // running
+                    '#6c757d'  // other
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+});
+{% endif %}
+</script>
+
+<style>
+.stats-card {
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: white;
+    text-align: center;
+}
+
+.stats-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stats-label {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+details summary {
+    cursor: pointer;
+    color: #007bff;
+}
+
+details summary:hover {
+    color: #0056b3;
+}
+</style>
+{% endblock %}

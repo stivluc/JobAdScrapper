@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - Job Ad Scraper{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-cog"></i> Configuration</h1>
+        <p class="lead">Personnalisez les paramètres du scraper selon vos critères</p>
+    </div>
+</div>
+
+<!-- Configuration actuelle -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user"></i> Profil actuel</h5>
+            </div>
+            <div class="card-body">
+                {% if config_data %}
+                    <div class="mb-3">
+                        <strong>Expérience:</strong> {{ config_data.user_profile.experience_years }} ans<br>
+                        <strong>Niveau:</strong> {{ config_data.user_profile.education_level }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Compétences:</strong>
+                        <div class="mt-2">
+                            {% for skill in config_data.user_profile.skills.split(', ')[:8] %}
+                                <span class="badge bg-primary me-1 mb-1">{{ skill }}</span>
+                            {% endfor %}
+                            {% if config_data.user_profile.skills.split(', ')|length > 8 %}
+                                <span class="badge bg-secondary">+{{ config_data.user_profile.skills.split(', ')|length - 8 }} autres</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Erreur lors du chargement du profil</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-search"></i> Critères de recherche</h5>
+            </div>
+            <div class="card-body">
+                {% if config_data %}
+                    <div class="mb-3">
+                        <strong>Postes recherchés:</strong>
+                        <div class="mt-2">
+                            {% for keyword in config_data.search_criteria.keywords[:3] %}
+                                <span class="badge bg-success me-1 mb-1">{{ keyword }}</span>
+                            {% endfor %}
+                            {% if config_data.search_criteria.keywords|length > 3 %}
+                                <span class="badge bg-secondary">+{{ config_data.search_criteria.keywords|length - 3 }} autres</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Localisations:</strong>
+                        <div class="mt-2">
+                            {% for location in config_data.search_criteria.locations[:3] %}
+                                <span class="badge bg-info me-1 mb-1">{{ location }}</span>
+                            {% endfor %}
+                            {% if config_data.search_criteria.locations|length > 3 %}
+                                <span class="badge bg-secondary">+{{ config_data.search_criteria.locations|length - 3 }} autres</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Salaire:</strong> {{ config_data.search_criteria.salary_min }}€ - {{ config_data.search_criteria.salary_max }}€<br>
+                        <strong>Télétravail:</strong> {% if config_data.search_criteria.remote_ok %}✅ Oui{% else %}❌ Non{% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Erreur lors du chargement des critères</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-wrench"></i> Paramètres scraper</h5>
+            </div>
+            <div class="card-body">
+                {% if config_data %}
+                    <div class="mb-2">
+                        <strong>Requêtes Google max:</strong> {{ config_data.scraper_settings.max_google_queries }}<br>
+                        <strong>Offres max:</strong> {{ config_data.scraper_settings.max_jobs_total }}<br>
+                        <strong>Délai entre requêtes:</strong> {{ config_data.scraper_settings.delay_between_queries }}s<br>
+                        <strong>Mode headless:</strong> {% if config_data.scraper_settings.headless %}✅ Oui{% else %}❌ Non{% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">Erreur lors du chargement des paramètres</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-edit"></i> Éditeur de configuration</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('save_config') }}">
+                    <div class="mb-3">
+                        <label for="config_content" class="form-label">
+                            Fichier config.yaml
+                            <small class="text-muted">(Soyez prudent avec la syntaxe YAML)</small>
+                        </label>
+                        <textarea 
+                            class="form-control config-editor" 
+                            id="config_content" 
+                            name="config_content" 
+                            rows="25"
+                            spellcheck="false">{{ config_content }}</textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Sauvegarder la configuration
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetConfig()">
+                                <i class="fas fa-undo"></i> Annuler les modifications
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-info" onclick="validateYaml()">
+                                <i class="fas fa-check"></i> Valider YAML
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" onclick="showTemplate()">
+                                <i class="fas fa-file-code"></i> Template
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Aide et documentation -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-question-circle"></i> Aide et documentation</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-user-cog"></i> Profil utilisateur</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>skills:</strong> Compétences séparées par des virgules</li>
+                            <li><strong>experience_years:</strong> Nombre d'années d'expérience</li>
+                            <li><strong>education_level:</strong> Niveau d'éducation</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-target"></i> Critères de recherche</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>keywords:</strong> Liste des types de postes</li>
+                            <li><strong>locations:</strong> Liste des localisations</li>
+                            <li><strong>salary_min/max:</strong> Fourchette salariale</li>
+                            <li><strong>remote_ok:</strong> Télétravail accepté (true/false)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-cogs"></i> Paramètres scraper</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>max_google_queries:</strong> Nombre de requêtes Google</li>
+                            <li><strong>max_jobs_total:</strong> Nombre max d'offres</li>
+                            <li><strong>delay_between_queries:</strong> Délai anti-détection</li>
+                            <li><strong>headless:</strong> Mode invisible (true/false)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Attention:</strong> Une configuration incorrecte peut empêcher le scraper de fonctionner.
+                    Assurez-vous de respecter la syntaxe YAML et validez vos modifications.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour le template -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Template de configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Voici un template de base pour la configuration :</p>
+                <pre><code class="language-yaml" id="template-code"># Configuration du scraper d'emploi
+user_profile:
+  skills: "Python, JavaScript, React, Node.js, SQL"
+  experience_years: 5
+  education_level: "Master"
+
+search_criteria:
+  keywords: ["développeur", "ingénieur logiciel", "full stack"]
+  locations: ["Paris, France", "Lyon, France", "télétravail"]
+  salary_min: 45000
+  salary_max: 80000
+  remote_ok: true
+
+scraper_settings:
+  max_google_queries: 15
+  max_jobs_total: 100
+  delay_between_queries: 8
+  headless: false</code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" onclick="copyTemplate()">
+                    <i class="fas fa-copy"></i> Copier le template
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateYaml() {
+    const content = document.getElementById('config_content').value;
+    
+    // Validation basique côté client
+    try {
+        // Vérification de base de la syntaxe
+        if (!content.trim()) {
+            alert('Le fichier de configuration est vide');
+            return;
+        }
+        
+        // Vérification des sections requises
+        if (!content.includes('user_profile:')) {
+            alert('Section "user_profile" manquante');
+            return;
+        }
+        
+        if (!content.includes('search_criteria:')) {
+            alert('Section "search_criteria" manquante');
+            return;
+        }
+        
+        if (!content.includes('scraper_settings:')) {
+            alert('Section "scraper_settings" manquante');
+            return;
+        }
+        
+        alert('✅ Configuration valide (validation de base)');
+        
+    } catch (error) {
+        alert('❌ Erreur de validation: ' + error.message);
+    }
+}
+
+function resetConfig() {
+    if (confirm('Êtes-vous sûr de vouloir annuler toutes les modifications ?')) {
+        location.reload();
+    }
+}
+
+function showTemplate() {
+    const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+    modal.show();
+}
+
+function copyTemplate() {
+    const template = document.getElementById('template-code').textContent;
+    navigator.clipboard.writeText(template).then(() => {
+        alert('Template copié dans le presse-papiers');
+    });
+}
+
+// Améliorer l'éditeur avec la coloration syntaxique
+document.addEventListener('DOMContentLoaded', function() {
+    const editor = document.getElementById('config_content');
+    
+    // Ajout de numéros de ligne
+    editor.addEventListener('input', function() {
+        const lines = this.value.split('\n').length;
+        // Ici on pourrait ajouter des numéros de ligne
+    });
+    
+    // Raccourcis clavier
+    editor.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            document.querySelector('form').submit();
+        }
+    });
+});
+</script>
+
+<style>
+.config-editor {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    tab-size: 2;
+}
+
+.config-editor:focus {
+    background-color: white;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+pre code {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+</style>
+{% endblock %}
