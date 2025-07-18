@@ -84,6 +84,37 @@
             font-size: 0.9em;
             opacity: 0.8;
         }
+        .log-console {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        .log-time {
+            color: #888;
+            margin-right: 10px;
+        }
+        .log-text {
+            color: #00ff00;
+        }
+        .log-error {
+            color: #ff6b6b;
+        }
+        .log-success {
+            color: #51cf66;
+        }
+        .log-info {
+            color: #74c0fc;
+        }
     </style>
 </head>
 <body>
@@ -197,6 +228,36 @@
                             statusSpan.textContent = data.running ? 
                                 `En cours... (${data.progress}%)` : 
                                 data.error ? 'Erreur' : 'Inactif';
+                        }
+                    }
+                    
+                    // Mise à jour des logs en temps réel
+                    const logConsole = document.getElementById('log-console');
+                    if (logConsole && data.current_task && data.running) {
+                        const currentTime = new Date().toLocaleTimeString();
+                        const lastLogEntry = logConsole.querySelector('.log-entry:last-child .log-text');
+                        
+                        // Ajouter uniquement si le message a changé
+                        if (!lastLogEntry || lastLogEntry.textContent !== data.current_task) {
+                            const logEntry = document.createElement('div');
+                            logEntry.className = 'log-entry';
+                            
+                            const logClass = data.error ? 'log-error' : 
+                                           data.progress === 100 ? 'log-success' : 'log-info';
+                            
+                            logEntry.innerHTML = `
+                                <span class="log-time">${currentTime}</span>
+                                <span class="log-text ${logClass}">${data.current_task}</span>
+                            `;
+                            
+                            logConsole.appendChild(logEntry);
+                            logConsole.scrollTop = logConsole.scrollHeight;
+                            
+                            // Limiter à 50 entrées pour éviter la surcharge
+                            const entries = logConsole.querySelectorAll('.log-entry');
+                            if (entries.length > 50) {
+                                entries[0].remove();
+                            }
                         }
                     }
                 })

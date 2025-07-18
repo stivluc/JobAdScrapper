@@ -309,45 +309,73 @@ class WebScraper(EnhancedJobScraper):
                 'status': 'running'
             }
             
-            self.update_progress(10, "Initialisation du scraping...")
+            self.update_progress(5, "🔧 Chargement de la configuration...")
+            
+            self.update_progress(10, "🚀 Initialisation du moteur de scraping...")
             
             # Phase 1: Recherche Google
-            self.update_progress(20, "Recherche Google en cours...")
+            self.update_progress(15, "🔍 Démarrage des recherches Google...")
+            max_queries = self.config['scraper_settings'].get('max_google_queries', 15)
+            self.update_progress(20, f"🔍 Exécution de {max_queries} requêtes Google...")
+            
             job_urls = self.google_searcher.search_all_queries()
             
             if not job_urls:
-                raise Exception("Aucune URL trouvée via Google")
+                raise Exception("❌ Aucune URL d'offre trouvée via Google Search")
             
-            self.update_progress(40, f"Scraping de {len(job_urls)} offres...")
+            self.update_progress(35, f"✅ {len(job_urls)} URLs trouvées via Google")
             
             # Phase 2: Scraping des offres
             max_jobs = self.config['scraper_settings'].get('max_jobs_total', 100)
             jobs_to_process = job_urls[:max_jobs]
             
+            self.update_progress(40, f"📄 Début du scraping de {len(jobs_to_process)} offres...")
+            
             scraped_jobs = []
             total_jobs = len(jobs_to_process)
+            successful_scrapes = 0
             
             for i, url in enumerate(jobs_to_process):
                 progress = 40 + int((i / total_jobs) * 40)
-                self.update_progress(progress, f"Scraping offre {i+1}/{total_jobs}")
+                
+                # Extraire le nom du site pour un log plus informatif
+                site_name = "Unknown"
+                if "indeed" in url.lower():
+                    site_name = "Indeed"
+                elif "linkedin" in url.lower():
+                    site_name = "LinkedIn"
+                elif "welcometothejungle" in url.lower():
+                    site_name = "Welcome to the Jungle"
+                elif "glassdoor" in url.lower():
+                    site_name = "Glassdoor"
+                
+                self.update_progress(progress, f"📋 [{site_name}] Offre {i+1}/{total_jobs} ({successful_scrapes} réussies)")
                 
                 job_data = self.site_scraper.scrape_job_url(url)
                 
                 if job_data:
                     job_data['match_score'] = self.calculate_match_score(job_data)
                     scraped_jobs.append(job_data)
+                    successful_scrapes += 1
+                    
+                    # Log de succès avec détails
+                    score = job_data.get('match_score', 0)
+                    company = job_data.get('company', 'N/A')[:20]
+                    self.update_progress(progress, f"✅ [{site_name}] {company} - Score: {score:.1f}% ({successful_scrapes}/{i+1})")
                     
                     # Sauvegarde en base de données
                     db_manager.save_job(job_data)
+                else:
+                    self.update_progress(progress, f"⚠️ [{site_name}] Échec scraping offre {i+1}")
                 
                 time.sleep(1)  # Délai entre les requêtes
             
-            self.update_progress(85, "Déduplication des offres...")
+            self.update_progress(85, f"🔄 Vérification des doublons ({successful_scrapes} offres)")
             
             # Phase 3: Déduplication (déjà gérée par SQLite UNIQUE)
             unique_jobs = scraped_jobs
             
-            self.update_progress(95, "Finalisation...")
+            self.update_progress(95, f"🏁 Finalisation... ({len(unique_jobs)} offres uniques)")
             
             # Sauvegarde de la session
             session_end_time = datetime.now()
@@ -365,7 +393,8 @@ class WebScraper(EnhancedJobScraper):
             
             SCRAPER_STATUS['total_jobs'] = len(unique_jobs)
             SCRAPER_STATUS['end_time'] = session_end_time
-            self.update_progress(100, f"Terminé ! {len(unique_jobs)} offres trouvées")
+            duration_str = f"{int(duration//60)}min {int(duration%60)}s"
+            self.update_progress(100, f"🎉 Terminé ! {len(unique_jobs)} offres trouvées en {duration_str}")
             
         except Exception as e:
             SCRAPER_STATUS['error'] = str(e)
@@ -523,10 +552,10 @@ if __name__ == '__main__':
     
     print("🌐 Interface web du Job Scraper")
     print("=" * 40)
-    print("📱 Accès: http://localhost:5000")
-    print("🔧 Configuration: http://localhost:5000/config")
-    print("💼 Offres: http://localhost:5000/jobs")
-    print("📊 Sessions: http://localhost:5000/sessions")
+    print("📱 Accès: http://localhost:8080")
+    print("🔧 Configuration: http://localhost:8080/config")
+    print("💼 Offres: http://localhost:8080/jobs")
+    print("📊 Sessions: http://localhost:8080/sessions")
     print("=" * 40)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=8080)

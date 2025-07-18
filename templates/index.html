@@ -66,6 +66,17 @@
                                 {{ scraper_status.current_task or 'En cours...' }}
                             </small>
                         </div>
+                        
+                        <!-- Console de logs -->
+                        <div class="mt-3">
+                            <h6><i class="fas fa-terminal"></i> Console temps réel</h6>
+                            <div id="log-console" class="log-console">
+                                <div class="log-entry">
+                                    <span class="log-time">{{ scraper_status.start_time.strftime('%H:%M:%S') if scraper_status.start_time else '' }}</span>
+                                    <span class="log-text">{{ scraper_status.current_task or 'En attente...' }}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 {% elif scraper_status.error %}
                     <div class="alert alert-danger">

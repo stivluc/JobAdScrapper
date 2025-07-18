@@ -48,9 +48,9 @@ if not exist "results" mkdir results
 echo ✅ Environnement prêt
 echo.
 echo 🌐 Démarrage du serveur web...
-echo 📱 Interface disponible sur: http://localhost:5000
-echo 🔧 Configuration: http://localhost:5000/config
-echo 💼 Offres: http://localhost:5000/jobs
+echo 📱 Interface disponible sur: http://localhost:8080
+echo 🔧 Configuration: http://localhost:8080/config
+echo 💼 Offres: http://localhost:8080/jobs
 echo.
 echo Appuyez sur Ctrl+C pour arrêter le serveur
 echo.
