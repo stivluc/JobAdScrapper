@@ -14,8 +14,15 @@ from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 
-# Import du scraper
-from main import EnhancedJobScraper
+# Import du nouveau scraper API
+try:
+    from api_scraper import APIJobScraper
+    SCRAPER_CLASS = APIJobScraper
+    print("✅ Utilisation du nouveau scraper API")
+except ImportError:
+    from main import EnhancedJobScraper
+    SCRAPER_CLASS = EnhancedJobScraper
+    print("⚠️ Fallback sur l'ancien scraper Selenium")
 
 app = Flask(__name__)
 app.secret_key = 'job_scraper_secret_key_change_me'
@@ -258,20 +265,20 @@ class DatabaseManager:
 # Instance globale du gestionnaire de base de données
 db_manager = DatabaseManager()
 
-class WebScraper(EnhancedJobScraper):
+class APIWebScraper:
     """
-    Version web du scraper avec base de données et callbacks
+    Version web du nouveau scraper API avec base de données et callbacks
     """
     
     def __init__(self, config_path: str = "config.yaml", progress_callback=None):
         """
-        Initialise le scraper web
+        Initialise le scraper web API
         
         Args:
             config_path (str): Chemin vers la configuration
             progress_callback (callable): Callback pour les mises à jour de progression
         """
-        super().__init__(config_path)
+        self.api_scraper = SCRAPER_CLASS(config_path)
         self.progress_callback = progress_callback
         self.session_start_time = None
         self.session_data = {}
@@ -292,7 +299,7 @@ class WebScraper(EnhancedJobScraper):
     
     def run_with_database(self):
         """
-        Lance le scraping avec sauvegarde en base de données
+        Lance le scraping API avec sauvegarde en base de données
         """
         global SCRAPER_STATUS
         
@@ -305,77 +312,82 @@ class WebScraper(EnhancedJobScraper):
             self.session_start_time = datetime.now()
             self.session_data = {
                 'start_time': self.session_start_time.isoformat(),
-                'config_snapshot': self.config,
+                'config_snapshot': self.api_scraper.config,
                 'status': 'running'
             }
             
             self.update_progress(5, "🔧 Chargement de la configuration...")
+            time.sleep(1)
             
-            self.update_progress(10, "🚀 Initialisation du moteur de scraping...")
+            self.update_progress(10, "🚀 Initialisation du scraper API...")
+            time.sleep(1)
             
-            # Phase 1: Recherche Google
-            self.update_progress(15, "🔍 Démarrage des recherches Google...")
-            max_queries = self.config['scraper_settings'].get('max_google_queries', 15)
-            self.update_progress(20, f"🔍 Exécution de {max_queries} requêtes Google...")
+            # Phase 1: Scraping Indeed RSS
+            self.update_progress(15, "📡 Recherche via Indeed RSS...")
+            indeed_jobs = self.api_scraper.scrape_indeed_rss()
             
-            job_urls = self.google_searcher.search_all_queries()
+            self.update_progress(30, f"✅ Indeed: {len(indeed_jobs)} offres trouvées")
             
-            if not job_urls:
-                raise Exception("❌ Aucune URL d'offre trouvée via Google Search")
+            # Phase 2: APIs alternatives
+            self.update_progress(40, "🔍 Recherche via APIs alternatives...")
+            try:
+                github_jobs = self.api_scraper.scrape_github_jobs()
+                self.update_progress(55, f"✅ APIs: {len(github_jobs)} offres trouvées")
+            except Exception as e:
+                print(f"⚠️ APIs non disponibles: {e}")
+                github_jobs = []
             
-            self.update_progress(35, f"✅ {len(job_urls)} URLs trouvées via Google")
+            self.update_progress(60, "🚀 Recherche startups et entreprises...")
+            try:
+                startup_jobs = self.api_scraper.scrape_startups_jobs()
+                self.update_progress(70, f"✅ Startups: {len(startup_jobs)} offres trouvées")
+            except Exception as e:
+                print(f"⚠️ Startups non disponibles: {e}")
+                startup_jobs = []
             
-            # Phase 2: Scraping des offres
-            max_jobs = self.config['scraper_settings'].get('max_jobs_total', 100)
-            jobs_to_process = job_urls[:max_jobs]
+            self.update_progress(75, "🔄 Combinaison des résultats...")
             
-            self.update_progress(40, f"📄 Début du scraping de {len(jobs_to_process)} offres...")
+            # Combinaison des résultats
+            all_jobs = indeed_jobs + github_jobs + startup_jobs
             
-            scraped_jobs = []
-            total_jobs = len(jobs_to_process)
-            successful_scrapes = 0
+            if not all_jobs:
+                raise Exception("❌ Aucune offre trouvée via les APIs")
             
-            for i, url in enumerate(jobs_to_process):
-                progress = 40 + int((i / total_jobs) * 40)
+            self.update_progress(80, f"🔄 Déduplication de {len(all_jobs)} offres...")
+            unique_jobs = self.api_scraper.deduplicate_jobs(all_jobs)
+            
+            self.update_progress(85, "📊 Calcul des scores de compatibilité...")
+            
+            # Sauvegarde en base et calcul des scores
+            saved_count = 0
+            for job in unique_jobs:
+                job.match_score = self.api_scraper.calculate_match_score(job)
                 
-                # Extraire le nom du site pour un log plus informatif
-                site_name = "Unknown"
-                if "indeed" in url.lower():
-                    site_name = "Indeed"
-                elif "linkedin" in url.lower():
-                    site_name = "LinkedIn"
-                elif "welcometothejungle" in url.lower():
-                    site_name = "Welcome to the Jungle"
-                elif "glassdoor" in url.lower():
-                    site_name = "Glassdoor"
+                # Conversion en dict pour la base de données
+                job_dict = {
+                    'title': job.title,
+                    'company': job.company,
+                    'location': job.location,
+                    'salary': job.salary,
+                    'description': job.description,
+                    'url': job.url,
+                    'source': job.source,
+                    'match_score': job.match_score,
+                    'scraped_at': job.scraped_at
+                }
                 
-                self.update_progress(progress, f"📋 [{site_name}] Offre {i+1}/{total_jobs} ({successful_scrapes} réussies)")
-                
-                job_data = self.site_scraper.scrape_job_url(url)
-                
-                if job_data:
-                    job_data['match_score'] = self.calculate_match_score(job_data)
-                    scraped_jobs.append(job_data)
-                    successful_scrapes += 1
-                    
-                    # Log de succès avec détails
-                    score = job_data.get('match_score', 0)
-                    company = job_data.get('company', 'N/A')[:20]
-                    self.update_progress(progress, f"✅ [{site_name}] {company} - Score: {score:.1f}% ({successful_scrapes}/{i+1})")
-                    
-                    # Sauvegarde en base de données
-                    db_manager.save_job(job_data)
-                else:
-                    self.update_progress(progress, f"⚠️ [{site_name}] Échec scraping offre {i+1}")
-                
-                time.sleep(1)  # Délai entre les requêtes
+                try:
+                    db_manager.save_job(job_dict)
+                    saved_count += 1
+                except Exception as e:
+                    # Ignorer les doublons (contrainte UNIQUE)
+                    if "UNIQUE constraint failed" not in str(e):
+                        print(f"⚠️ Erreur sauvegarde: {e}")
             
-            self.update_progress(85, f"🔄 Vérification des doublons ({successful_scrapes} offres)")
+            self.update_progress(95, f"💾 {saved_count} nouvelles offres sauvegardées")
             
-            # Phase 3: Déduplication (déjà gérée par SQLite UNIQUE)
-            unique_jobs = scraped_jobs
-            
-            self.update_progress(95, f"🏁 Finalisation... ({len(unique_jobs)} offres uniques)")
+            # Tri par score
+            unique_jobs.sort(key=lambda x: x.match_score, reverse=True)
             
             # Sauvegarde de la session
             session_end_time = datetime.now()
@@ -384,7 +396,7 @@ class WebScraper(EnhancedJobScraper):
             self.session_data.update({
                 'end_time': session_end_time.isoformat(),
                 'duration_seconds': int(duration),
-                'total_jobs': len(scraped_jobs),
+                'total_jobs': len(all_jobs),
                 'unique_jobs': len(unique_jobs),
                 'status': 'completed'
             })
@@ -394,20 +406,31 @@ class WebScraper(EnhancedJobScraper):
             SCRAPER_STATUS['total_jobs'] = len(unique_jobs)
             SCRAPER_STATUS['end_time'] = session_end_time
             duration_str = f"{int(duration//60)}min {int(duration%60)}s"
-            self.update_progress(100, f"🎉 Terminé ! {len(unique_jobs)} offres trouvées en {duration_str}")
+            
+            if unique_jobs:
+                best_score = unique_jobs[0].match_score
+                self.update_progress(100, f"🎉 Terminé ! {len(unique_jobs)} offres (meilleur score: {best_score:.1f}%) en {duration_str}")
+            else:
+                self.update_progress(100, f"✅ Terminé en {duration_str} - Aucune nouvelle offre")
             
         except Exception as e:
             SCRAPER_STATUS['error'] = str(e)
+            SCRAPER_STATUS['progress'] = 0  # Reset progress on error
             self.session_data.update({
                 'end_time': datetime.now().isoformat(),
                 'status': 'error',
                 'error_message': str(e)
             })
             db_manager.save_scraping_session(self.session_data)
-            self.update_progress(0, f"Erreur: {str(e)}")
+            self.update_progress(0, f"❌ Erreur: {str(e)}")
         
         finally:
             SCRAPER_STATUS['running'] = False
+            # Si aucune erreur n'a été définie, s'assurer que l'état final est correct
+            if SCRAPER_STATUS['progress'] == 100 and not SCRAPER_STATUS['error']:
+                SCRAPER_STATUS['current_task'] = 'Terminé'
+            elif SCRAPER_STATUS['error']:
+                SCRAPER_STATUS['current_task'] = f"Erreur: {SCRAPER_STATUS['error']}"
 
 # Routes Flask
 @app.route('/')
@@ -498,7 +521,7 @@ def start_scraping():
         return jsonify({'error': 'Le scraping est déjà en cours'})
     
     def run_scraper():
-        scraper = WebScraper()
+        scraper = APIWebScraper()
         scraper.run_with_database()
     
     # Lancement en thread séparé

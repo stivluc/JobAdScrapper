@@ -104,100 +104,50 @@ class GoogleJobSearcher:
         # Extraction dynamique depuis config.yaml
         keywords = self.config['search_criteria']['keywords']
         locations = self.config['search_criteria']['locations']
-        skills_raw = self.config['user_profile']['skills']
-        
-        # Parse les compétences du profil utilisateur
-        skills = [skill.strip() for skill in skills_raw.split(',')]
-        
-        # Créer des variantes pour les technologies principales
-        tech_variants = {
-            'React': ['React', 'ReactJS', 'React.js'],
-            'Next': ['Next', 'NextJS', 'Next.js'],
-            'Node': ['Node', 'NodeJS', 'Node.js'],
-            'JavaScript': ['JavaScript', 'JS'],
-            'TypeScript': ['TypeScript', 'TS'],
-            'Python': ['Python'],
-            'Docker': ['Docker', 'Containerization'],
-            'Kubernetes': ['Kubernetes', 'K8s'],
-            'AWS': ['AWS', 'Amazon Web Services'],
-            'PostgreSQL': ['PostgreSQL', 'Postgres'],
-            'MongoDB': ['MongoDB', 'Mongo']
-        }
-        
-        # Association correcte sites/régions
-        swiss_sites = ['indeed.ch', 'jobs.ch', 'glassdoor.ch']
-        french_sites = ['indeed.fr', 'glassdoor.fr', 'welcometothejungle.com']
-        international_sites = ['linkedin.com/jobs', 'stackoverflow.com/jobs']
         
         queries = []
         
-        # 1. Requêtes SIMPLES par compétences (une seule tech à la fois)
-        main_techs = ['React', 'Node', 'JavaScript']  # Réduites à 3 principales
+        # 1. Requêtes TRÈS SIMPLES par mots-clés + localisation
+        main_keywords = keywords[:3]  # Prendre seulement les 3 premiers mots-clés
+        main_locations = ['Genève', 'Lausanne', 'Lille', 'Suisse', 'télétravail']  # Lieux principaux
         
-        for tech in main_techs:
-            if tech in tech_variants:
-                # Prendre SEULEMENT la première variante (la plus simple)
-                tech_term = tech_variants[tech][0]
-                
-                # Sites suisses - TRÈS SIMPLE
-                swiss_locations = [loc for loc in locations if any(swiss_word in loc.lower() 
-                                 for swiss_word in ['genève', 'lausanne', 'suisse', 'vaud', 'fribourg', 'neuchâtel'])]
-                
-                if swiss_locations:
-                    # UNE SEULE requête par tech pour la Suisse
-                    query = f'{tech_term} emploi site:indeed.ch'
-                    queries.append(query)
-                
-                # Sites français - TRÈS SIMPLE
-                lille_locations = [loc for loc in locations if 'lille' in loc.lower()]
-                if lille_locations:
-                    # UNE SEULE requête par tech pour la France
-                    query = f'{tech_term} emploi Lille site:indeed.fr'
-                    queries.append(query)
+        for keyword in main_keywords:
+            for location in main_locations:
+                # Requête ultra-simple sans restrictions
+                query = f'{keyword} {location}'
+                queries.append(query)
         
-        # 2. Requêtes générales SIMPLES
-        simple_queries = [
-            # Requêtes basiques Suisse
-            'développeur React Genève',
-            'ingénieur JavaScript Lausanne', 
-            'full stack developer Suisse',
-            
-            # Requêtes basiques France
-            'développeur React Lille',
-            'ingénieur Node Lille',
-            'full stack developer Lille',
-            
-            # Télétravail
-            'React développeur télétravail',
-            'JavaScript remote France',
-            'Node.js remote Suisse'
+        # 2. Requêtes génériques SIMPLES
+        basic_queries = [
+            'développeur React',
+            'JavaScript developer', 
+            'Python engineer',
+            'full stack Suisse',
+            'software engineer Geneva',
+            'développeur Lausanne',
+            'tech lead Lille',
+            'remote developer',
+            'télétravail développeur',
+            'emploi ingénieur logiciel'
         ]
         
-        queries.extend(simple_queries)
+        queries.extend(basic_queries)
         
-        # 3. NOUVEAU: Requêtes careers SIMPLES
-        career_queries = [
-            'React careers Switzerland',
-            'JavaScript jobs Geneva',
-            'Node developer Lille careers',
-            'développeur inurl:careers',
-            'React inurl:jobs'
+        # 3. Requêtes avec sites (SANS restrictions)
+        site_queries = [
+            'développeur site:indeed.ch',
+            'developer site:indeed.fr', 
+            'jobs site:linkedin.com',
+            'careers site:welcometothejungle.com',
+            'emploi site:jobs.ch'
         ]
         
-        queries.extend(career_queries)
+        queries.extend(site_queries)
         
-        # Exclusions pour éviter les profils et stages
-        exclusions = ' -profil -cv -stage -stagiaire -alternance -internship -apprenti -candidat'
-        
-        # Application des exclusions
-        final_queries = []
-        for query in queries:
-            final_query = f"{query}{exclusions}"
-            final_queries.append(final_query)
-        
+        # AUCUNE exclusion pour maximiser les résultats
         # Limiter selon la config
         max_queries = self.config['scraper_settings'].get('max_google_queries', 15)
-        return final_queries[:max_queries]
+        return queries[:max_queries]
     
     def search_google(self, query: str, max_results: int = 50) -> List[str]:
         """

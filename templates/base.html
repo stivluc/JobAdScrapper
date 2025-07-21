@@ -8,112 +8,692 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --border-light: #475569;
+            --shadow: rgba(0, 0, 0, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            width: 100%;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: var(--bg-secondary) !important;
+            border-bottom: 1px solid var(--border-light);
+            box-shadow: 0 4px 6px var(--shadow);
+            padding: 1rem 0;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
+        .navbar .container-fluid {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
         .navbar-brand {
-            font-weight: bold;
+            font-weight: 700;
+            color: var(--text-primary) !important;
+            font-size: 1.25rem;
         }
-        .sidebar {
-            background-color: #f8f9fa;
-            min-height: 100vh;
-            padding-top: 20px;
+
+        .nav-link {
+            color: var(--text-secondary) !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            margin: 0 0.25rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
         }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-primary) !important;
+            background-color: var(--bg-tertiary);
+        }
+
+        .navbar-text {
+            color: var(--text-secondary) !important;
+        }
+
+        /* Main Layout */
         .main-content {
-            padding: 20px;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
         }
+
+        .container-fluid {
+            padding: 0;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .lead {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Cards */
         .card {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border: none;
-            margin-bottom: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px var(--shadow);
+            margin-bottom: 2rem;
+            transition: all 0.2s ease;
         }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px var(--shadow);
+        }
+
         .card-header {
-            background-color: #007bff;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-light);
+            border-radius: 0.75rem 0.75rem 0 0 !important;
+            padding: 1.25rem 1.5rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        /* Stats Cards */
+        .stats-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 0.75rem;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+        }
+
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px var(--shadow);
+        }
+
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1;
+        }
+
+        .stats-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Buttons */
+        .btn {
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-success {
+            background-color: var(--accent-green);
             color: white;
-            border-bottom: none;
         }
-        .progress-container {
-            margin: 20px 0;
+
+        .btn-success:hover {
+            background-color: #059669;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+            color: white;
         }
-        .job-score {
-            font-weight: bold;
-            color: #28a745;
+
+        .btn-primary {
+            background-color: var(--accent-blue);
+            color: white;
         }
-        .job-score.medium {
-            color: #ffc107;
+
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+            color: white;
         }
-        .job-score.low {
-            color: #dc3545;
+
+        .btn-outline-primary {
+            background-color: transparent;
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
         }
+
+        .btn-outline-primary:hover {
+            background-color: var(--accent-blue);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-secondary {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            transform: translateY(-1px);
+        }
+
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+        }
+
+        /* Tables */
+        .table {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .table th {
+            color: var(--text-primary);
+            font-weight: 600;
+            border-top: none;
+            border-bottom: 2px solid var(--border-light);
+            padding: 1rem 0.75rem;
+        }
+
+        .table td {
+            padding: 1rem 0.75rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Progress Bar */
+        .progress {
+            background-color: var(--bg-tertiary);
+            border-radius: 0.5rem;
+            height: 1rem;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+            transition: width 0.3s ease;
+        }
+
+        /* Status Indicators */
         .status-indicator {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 0.5rem;
         }
+
         .status-running {
-            background-color: #28a745;
+            background-color: var(--accent-green);
             animation: pulse 2s infinite;
         }
+
         .status-idle {
-            background-color: #6c757d;
+            background-color: var(--text-muted);
         }
+
         .status-error {
-            background-color: #dc3545;
+            background-color: var(--accent-red);
         }
+
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
-        .config-editor {
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+
+        /* Job Score */
+        .job-score {
+            font-weight: 700;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
         }
-        .stats-card {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            text-align: center;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+
+        .job-score.high {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
-        .stats-number {
-            font-size: 2.5em;
-            font-weight: bold;
+
+        .job-score.medium {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: var(--accent-orange);
+            border: 1px solid rgba(245, 158, 11, 0.3);
         }
-        .stats-label {
-            font-size: 0.9em;
-            opacity: 0.8;
+
+        .job-score.low {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
+
+        /* Log Console */
         .log-console {
-            background-color: #1e1e1e;
+            background-color: #000;
             color: #00ff00;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 15px;
-            border-radius: 5px;
-            height: 200px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.875rem;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            height: 300px;
             overflow-y: auto;
-            border: 1px solid #333;
+            border: 1px solid var(--border-light);
         }
+
         .log-entry {
-            margin-bottom: 5px;
+            margin-bottom: 0.5rem;
             line-height: 1.4;
         }
+
         .log-time {
-            color: #888;
-            margin-right: 10px;
+            color: #666;
+            margin-right: 1rem;
+            font-weight: 500;
         }
+
         .log-text {
             color: #00ff00;
         }
+
         .log-error {
             color: #ff6b6b;
+            font-weight: 600;
         }
+
         .log-success {
-            color: #51cf66;
+            color: #00ff00;
+            font-weight: 600;
         }
+
         .log-info {
-            color: #74c0fc;
+            color: #6bcf7f;
+        }
+
+        /* Alerts */
+        .alert {
+            border-radius: 0.5rem;
+            border: none;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-info {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .alert-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #6ee7b7;
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .alert-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+            border-left: 4px solid var(--accent-red);
+        }
+
+        .alert-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-left: 4px solid var(--border-light);
+        }
+
+        /* Badges */
+        .badge {
+            font-weight: 600;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+        }
+
+        .bg-secondary {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-secondary);
+        }
+
+        .bg-primary {
+            background-color: var(--accent-blue) !important;
+        }
+
+        .bg-success {
+            background-color: var(--accent-green) !important;
+        }
+
+        .bg-warning {
+            background-color: var(--accent-orange) !important;
+        }
+
+        .bg-danger {
+            background-color: var(--accent-red) !important;
+        }
+
+        /* Lists */
+        .list-group-item {
+            background-color: transparent;
+            border: 1px solid var(--border-light);
+            border-top: none;
+            color: var(--text-secondary);
+            padding: 0.75rem 1rem;
+        }
+
+        .list-group-item:first-child {
+            border-top: 1px solid var(--border-light);
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+
+        .list-group-item:last-child {
+            border-radius: 0 0 0.375rem 0.375rem;
+        }
+
+        .list-group-flush .list-group-item {
+            border-left: none;
+            border-right: none;
+            border-radius: 0;
+        }
+
+        /* Config Editor */
+        .config-editor {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.875rem;
+            background-color: #1a1a1a;
+            color: #f8f8f2;
+            border: 1px solid var(--border-light);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            resize: vertical;
+            min-height: 400px;
+            width: 100%;
+        }
+        
+        .config-editor:focus {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .stats-number {
+                font-size: 2rem;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .navbar-brand {
+                font-size: 1rem;
+                white-space: nowrap;
+            }
+            
+            .navbar-text {
+                font-size: 0.875rem;
+                white-space: nowrap;
+            }
+            
+            .nav-link {
+                padding: 0.375rem 0.75rem !important;
+                font-size: 0.875rem;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .navbar-collapse {
+                margin-top: 1rem;
+            }
+        }
+
+        /* Row spacing */
+        .row {
+            margin-bottom: 2rem;
+        }
+
+        .row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Proper spacing between sections */
+        .row + .row {
+            margin-top: 2rem;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Text utilities */
+        .text-muted {
+            color: var(--text-muted) !important;
+        }
+
+        /* Remove Bootstrap's default margins that conflict */
+        .mb-3, .my-3 {
+            margin-bottom: 1.5rem !important;
+        }
+
+        .mt-3, .my-3 {
+            margin-top: 1.5rem !important;
+        }
+
+        .mb-4, .my-4 {
+            margin-bottom: 2rem !important;
+        }
+
+        .mt-4, .my-4 {
+            margin-top: 2rem !important;
+        }
+        
+        /* Container adjustments */
+        .container-fluid {
+            padding: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        /* Prevent horizontal overflow */
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+        
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+            width: 100%;
+        }
+        
+        .row > * {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        
+        /* Improve statistics cards contrast */
+        .bg-primary .stats-number, .bg-primary .stats-label {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .bg-success .stats-number, .bg-success .stats-label {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .bg-warning .stats-number, .bg-warning .stats-label {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+        
+        .bg-info .stats-number, .bg-info .stats-label {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .bg-secondary .stats-number, .bg-secondary .stats-label {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Custom Modal Styling */
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .modal-header {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-light);
+            border-radius: 0.75rem 0.75rem 0 0;
+            padding: 1.5rem;
+        }
+        
+        .modal-title {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+        
+        .modal-body {
+            color: var(--text-secondary);
+            padding: 2rem 1.5rem;
+        }
+        
+        .modal-footer {
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-light);
+            border-radius: 0 0 0.75rem 0.75rem;
+            padding: 1.5rem;
+        }
+        
+        .btn-close {
+            filter: invert(1);
+            opacity: 0.8;
+        }
+        
+        .btn-close:hover {
+            opacity: 1;
+        }
+        
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        /* Custom Alert Icon */
+        .alert-icon {
+            width: 4rem;
+            height: 4rem;
+            margin: 0 auto 1.5rem;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .alert-icon.warning {
+            background: var(--accent-orange);
+        }
+        
+        .alert-icon.success {
+            background: var(--accent-green);
+        }
+        
+        .alert-icon.error {
+            background: var(--accent-red);
         }
     </style>
 </head>
@@ -158,6 +738,8 @@
                                 En cours... ({{ scraper_status.progress }}%)
                             {% elif scraper_status.error %}
                                 Erreur
+                            {% elif scraper_status.progress == 100 %}
+                                Terminé
                             {% else %}
                                 Inactif
                             {% endif %}
@@ -167,6 +749,84 @@
             </div>
         </div>
     </nav>
+
+    <!-- Custom Confirmation Modal -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">
+                        <i class="fas fa-play-circle me-2"></i>Démarrer le scraping
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert-icon warning">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h6 class="text-primary mb-3">Confirmer le démarrage</h6>
+                    <p class="mb-3">Êtes-vous sûr de vouloir démarrer une nouvelle session de scraping ?</p>
+                    <div style="background-color: var(--bg-tertiary);" class="p-3 rounded mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            Durée estimée : <strong>10-15 minutes</strong><br>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Le scraping va rechercher des offres d'emploi sur plusieurs sites
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="button" class="btn btn-success" id="confirmStartScraping">
+                        <i class="fas fa-play me-1"></i>Démarrer maintenant
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="alert-icon success">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <h6 class="text-primary mb-3">Démarrage en cours...</h6>
+                    <p class="mb-0 text-muted">Le scraping va commencer dans quelques instants</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Erreur
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert-icon error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h6 class="text-danger mb-3">Impossible de démarrer</h6>
+                    <p class="mb-3" id="errorMessage">Une erreur s'est produite lors du démarrage du scraping.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                        <i class="fas fa-check me-1"></i>Compris
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Contenu principal -->
     <div class="container-fluid">
@@ -209,6 +869,7 @@
                     if (progressBar) {
                         progressBar.style.width = data.progress + '%';
                         progressBar.setAttribute('aria-valuenow', data.progress);
+                        progressBar.textContent = data.progress + '%';
                     }
                     
                     if (progressText) {
@@ -223,11 +884,22 @@
                     }
                     
                     if (navbarText) {
-                        const statusSpan = navbarText.querySelector('span:not(.status-indicator)');
-                        if (statusSpan) {
-                            statusSpan.textContent = data.running ? 
-                                `En cours... (${data.progress}%)` : 
-                                data.error ? 'Erreur' : 'Inactif';
+                        // Update the text content after the status indicator
+                        let textContent;
+                        if (data.running) {
+                            textContent = `En cours... (${data.progress}%)`;
+                        } else if (data.error) {
+                            textContent = 'Erreur';
+                        } else if (data.progress === 100) {
+                            textContent = 'Terminé';
+                        } else {
+                            textContent = 'Inactif';
+                        }
+                        
+                        // Find and update just the text, keeping the status indicator
+                        const statusIndicator = navbarText.querySelector('.status-indicator');
+                        if (statusIndicator) {
+                            navbarText.innerHTML = statusIndicator.outerHTML + ' ' + textContent;
                         }
                     }
                     
@@ -269,6 +941,64 @@
         
         // Mise à jour immédiate au chargement
         document.addEventListener('DOMContentLoaded', updateScrapingStatus);
+        
+        // Fonction améliorée pour démarrer le scraping
+        function startScraping() {
+            // Afficher le modal de confirmation
+            const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+            confirmModal.show();
+        }
+        
+        // Gestionnaire pour la confirmation
+        document.getElementById('confirmStartScraping').addEventListener('click', function() {
+            // Fermer le modal de confirmation
+            const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+            confirmModal.hide();
+            
+            // Afficher le modal de chargement
+            const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+            loadingModal.show();
+            
+            // Démarrer le scraping
+            fetch('/start_scraping', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Fermer le modal de chargement
+                loadingModal.hide();
+                
+                if (data.error) {
+                    // Mettre à jour le statut immédiatement pour éviter l'affichage "en cours"
+                    updateScrapingStatus();
+                    
+                    // Afficher le modal d'erreur
+                    document.getElementById('errorMessage').textContent = data.error;
+                    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                    errorModal.show();
+                } else {
+                    // Succès - recharger la page après un court délai
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                }
+            })
+            .catch(error => {
+                // Fermer le modal de chargement
+                loadingModal.hide();
+                
+                // Mettre à jour le statut immédiatement
+                updateScrapingStatus();
+                
+                // Afficher le modal d'erreur
+                document.getElementById('errorMessage').textContent = 'Erreur de connexion : ' + error.message;
+                const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                errorModal.show();
+            });
+        });
     </script>
     
     {% block scripts %}{% endblock %}

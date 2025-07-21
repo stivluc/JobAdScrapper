@@ -86,8 +86,12 @@
                                     </td>
                                     <td>
                                         <div>
-                                            <strong>{{ session.created_at.split('T')[0] }}</strong><br>
-                                            <small class="text-muted">{{ session.created_at.split('T')[1].split('.')[0] }}</small>
+                                            {% if session.created_at and 'T' in session.created_at %}
+                                                <strong>{{ session.created_at.split('T')[0] }}</strong><br>
+                                                <small class="text-muted">{{ session.created_at.split('T')[1].split('.')[0] }}</small>
+                                            {% else %}
+                                                <strong>{{ session.created_at or 'N/A' }}</strong>
+                                            {% endif %}
                                         </div>
                                     </td>
                                     <td>

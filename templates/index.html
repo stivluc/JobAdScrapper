@@ -280,7 +280,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="text-center">
+                    <div class="text-center mt-4">
                         <a href="{{ url_for('sessions') }}" class="btn btn-outline-primary">
                             <i class="fas fa-arrow-right"></i> Voir l'historique complet
                         </a>
@@ -293,28 +293,5 @@
     </div>
 </div>
 
-<script>
-function startScraping() {
-    if (confirm('Êtes-vous sûr de vouloir démarrer le scraping ? Cela peut prendre 30-60 minutes.')) {
-        fetch('/start_scraping', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert('Erreur: ' + data.error);
-            } else {
-                location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur lors du démarrage du scraping');
-        });
-    }
-}
-</script>
+<!-- Script moved to base.html -->
 {% endblock %}
