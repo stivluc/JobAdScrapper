@@ -96,61 +96,108 @@ class GoogleJobSearcher:
     
     def build_search_queries(self) -> List[str]:
         """
-        Construit les requêtes de recherche Google optimisées
+        Construit les requêtes de recherche Google optimisées basées sur config.yaml
         
         Returns:
             List[str]: Liste des requêtes à exécuter
         """
+        # Extraction dynamique depuis config.yaml
         keywords = self.config['search_criteria']['keywords']
         locations = self.config['search_criteria']['locations']
+        skills_raw = self.config['user_profile']['skills']
+        
+        # Parse les compétences du profil utilisateur
+        skills = [skill.strip() for skill in skills_raw.split(',')]
+        
+        # Créer des variantes pour les technologies principales
+        tech_variants = {
+            'React': ['React', 'ReactJS', 'React.js'],
+            'Next': ['Next', 'NextJS', 'Next.js'],
+            'Node': ['Node', 'NodeJS', 'Node.js'],
+            'JavaScript': ['JavaScript', 'JS'],
+            'TypeScript': ['TypeScript', 'TS'],
+            'Python': ['Python'],
+            'Docker': ['Docker', 'Containerization'],
+            'Kubernetes': ['Kubernetes', 'K8s'],
+            'AWS': ['AWS', 'Amazon Web Services'],
+            'PostgreSQL': ['PostgreSQL', 'Postgres'],
+            'MongoDB': ['MongoDB', 'Mongo']
+        }
+        
+        # Association correcte sites/régions
+        swiss_sites = ['indeed.ch', 'jobs.ch', 'glassdoor.ch']
+        french_sites = ['indeed.fr', 'glassdoor.fr', 'welcometothejungle.com']
+        international_sites = ['linkedin.com/jobs', 'stackoverflow.com/jobs']
         
         queries = []
         
-        # Requêtes de base avec chaque localisation
-        for keyword in keywords:
-            for location in locations:
-                # Recherche générale
-                query = f'"{keyword}" "emploi" "{location}" 2024'
-                queries.append(query)
+        # 1. Requêtes SIMPLES par compétences (une seule tech à la fois)
+        main_techs = ['React', 'Node', 'JavaScript']  # Réduites à 3 principales
+        
+        for tech in main_techs:
+            if tech in tech_variants:
+                # Prendre SEULEMENT la première variante (la plus simple)
+                tech_term = tech_variants[tech][0]
                 
-                # Recherche avec salaire (seulement pour les localisations principales)
-                if self.config['search_criteria'].get('salary_min') and location in locations[:5]:
-                    salary_min = self.config['search_criteria']['salary_min']
-                    query_salary = f'"{keyword}" "{location}" "{salary_min}€" "salaire"'
-                    queries.append(query_salary)
-        
-        # Requêtes télétravail (sans localisation spécifique)
-        if self.config['search_criteria'].get('remote_ok'):
-            for keyword in keywords[:3]:  # Limite pour éviter trop de requêtes
-                query_remote = f'"{keyword}" "télétravail" "remote" "100%" 2024'
-                queries.append(query_remote)
-        
-        # Requêtes par site spécifique (seulement localisations principales)
-        target_sites = [
-            'indeed.fr', 'indeed.com', 'indeed.ch',
-            'linkedin.com', 'welcometothejungle.com',
-            'glassdoor.fr', 'glassdoor.com', 'glassdoor.ch',
-            'monster.fr', 'monster.ch', 'jobs.ch'
-        ]
-        
-        primary_locations = locations[:4]  # Genève, Lausanne, Vaud, Fribourg
-        
-        for site in target_sites:
-            for keyword in keywords[:2]:  # Limite pour éviter trop de requêtes
-                for location in primary_locations:
-                    query = f'site:{site} "{keyword}" "{location}"'
+                # Sites suisses - TRÈS SIMPLE
+                swiss_locations = [loc for loc in locations if any(swiss_word in loc.lower() 
+                                 for swiss_word in ['genève', 'lausanne', 'suisse', 'vaud', 'fribourg', 'neuchâtel'])]
+                
+                if swiss_locations:
+                    # UNE SEULE requête par tech pour la Suisse
+                    query = f'{tech_term} emploi site:indeed.ch'
+                    queries.append(query)
+                
+                # Sites français - TRÈS SIMPLE
+                lille_locations = [loc for loc in locations if 'lille' in loc.lower()]
+                if lille_locations:
+                    # UNE SEULE requête par tech pour la France
+                    query = f'{tech_term} emploi Lille site:indeed.fr'
                     queries.append(query)
         
-        # Exclusions pour éviter les stages/alternances
-        exclusions = ['-stage', '-stagiaire', '-alternance', '-internship', '-apprenti']
+        # 2. Requêtes générales SIMPLES
+        simple_queries = [
+            # Requêtes basiques Suisse
+            'développeur React Genève',
+            'ingénieur JavaScript Lausanne', 
+            'full stack developer Suisse',
+            
+            # Requêtes basiques France
+            'développeur React Lille',
+            'ingénieur Node Lille',
+            'full stack developer Lille',
+            
+            # Télétravail
+            'React développeur télétravail',
+            'JavaScript remote France',
+            'Node.js remote Suisse'
+        ]
         
-        # Ajout des exclusions aux requêtes principales
-        enhanced_queries = []
+        queries.extend(simple_queries)
+        
+        # 3. NOUVEAU: Requêtes careers SIMPLES
+        career_queries = [
+            'React careers Switzerland',
+            'JavaScript jobs Geneva',
+            'Node developer Lille careers',
+            'développeur inurl:careers',
+            'React inurl:jobs'
+        ]
+        
+        queries.extend(career_queries)
+        
+        # Exclusions pour éviter les profils et stages
+        exclusions = ' -profil -cv -stage -stagiaire -alternance -internship -apprenti -candidat'
+        
+        # Application des exclusions
+        final_queries = []
         for query in queries:
-            enhanced_query = f"{query} {' '.join(exclusions)}"
-            enhanced_queries.append(enhanced_query)
+            final_query = f"{query}{exclusions}"
+            final_queries.append(final_query)
         
-        return enhanced_queries[:self.config['scraper_settings'].get('max_google_queries', 15)]
+        # Limiter selon la config
+        max_queries = self.config['scraper_settings'].get('max_google_queries', 15)
+        return final_queries[:max_queries]
     
     def search_google(self, query: str, max_results: int = 50) -> List[str]:
         """
@@ -254,6 +301,7 @@ class GoogleJobSearcher:
     def is_job_url(self, url: str) -> bool:
         """
         Détermine si une URL pointe vers une offre d'emploi
+        OBJECTIF: Trouver TOUTES les offres (sites classiques + pages careers entreprises)
         
         Args:
             url (str): URL à analyser
@@ -265,41 +313,115 @@ class GoogleJobSearcher:
         if url in self.found_urls:
             return False
         
-        # Domaines d'emploi connus
-        job_domains = [
-            'indeed.fr', 'indeed.com',
-            'linkedin.com',
-            'welcometothejungle.com',
-            'glassdoor.fr', 'glassdoor.com',
-            'monster.fr', 'monster.com',
-            'apec.fr',
-            'pole-emploi.fr',
-            'leboncoin.fr',
-            'cadremploi.fr',
-            'regionsjob.com',
-            'meteojob.com'
+        # Sites d'emploi classiques avec patterns spécifiques
+        known_job_sites = {
+            'indeed.fr': ['/viewjob', '/jobs/'],
+            'indeed.com': ['/viewjob', '/jobs/'],
+            'indeed.ch': ['/viewjob', '/jobs/'],
+            'linkedin.com': ['/jobs/view/', '/jobs/collections/'],
+            'welcometothejungle.com': ['/companies/', '/jobs/'],
+            'glassdoor.fr': ['/job-listing/', '/partner/jobListing'],
+            'glassdoor.com': ['/job-listing/', '/partner/jobListing'],
+            'glassdoor.ch': ['/job-listing/', '/partner/jobListing'],
+            'monster.fr': ['/emploi/', '/job-openings/'],
+            'apec.fr': ['/emplois/', '/offres-emploi/'],
+            'jobs.ch': ['/offres/', '/emploi/'],
+            'jobup.ch': ['/offres/', '/emploi/'],
+            'stepstone.fr': ['/offres-emploi/', '/emploi/'],
+            'workable.com': ['/jobs/', '/careers/'],
+            'greenhouse.io': ['/jobs/', '/careers/'],
+            'lever.co': ['/jobs/', '/careers/']
+        }
+        
+        # Mots-clés d'URLs d'emploi (TRÈS INCLUSIF pour pages entreprises)
+        job_keywords = [
+            # URLs classiques
+            '/job', '/emploi', '/offre', '/career', '/careers', '/jobs',
+            '/recrutement', '/postes', '/opportunites', '/vacancy', '/vacancies',
+            '/work', '/hiring', '/positions', '/openings', '/open-positions',
+            
+            # Pages entreprises spécifiques
+            '/join-us', '/rejoignez-nous', '/nous-rejoindre', '/team',
+            '/equipe', '/talents', '/work-with-us', '/join-our-team',
+            '/apply', '/candidature', '/postulation', '/become',
+            
+            # Patterns tech startups
+            '/open-source', '/engineering', '/developer', '/tech',
+            '/software', '/product', '/frontend', '/backend', '/fullstack'
         ]
         
-        # Mots-clés d'URLs d'emploi
-        job_keywords = [
-            '/job', '/emploi', '/offre', '/career', '/careers',
-            '/recrutement', '/postes', '/jobs', '/opportunites'
+        # Mots-clés à exclure (MOINS RESTRICTIF)
+        excluded_keywords = [
+            # Profils personnels
+            '/in/', '/profile/', '/profil/', '/cv/', '/resume/', '/linkedin.com/in/',
+            
+            # Pages non-emploi
+            '/blog/', '/news/', '/actualites/', '/feed/', '/press/',
+            '/search/', '/recherche/', '/directory/', '/annuaire/',
+            '/login/', '/register/', '/signup/', '/connexion/', '/auth/',
+            
+            # Formations/stages seulement si explicite
+            '/stage-etudiant/', '/internship-program/', '/apprentissage-scolaire/',
+            
+            # Pages génériques
+            '/terms/', '/privacy/', '/legal/', '/mentions-legales/'
         ]
         
         try:
             parsed_url = urlparse(url)
             domain = parsed_url.netloc.lower()
             path = parsed_url.path.lower()
+            query = parsed_url.query.lower()
             
-            # Vérifier les domaines connus
-            if any(job_domain in domain for job_domain in job_domains):
-                self.found_urls.add(url)
-                return True
+            # Vérifier d'abord les exclusions STRICTES
+            if any(excluded in path for excluded in excluded_keywords):
+                return False
             
-            # Vérifier les mots-clés dans le chemin
+            # Cas spécial LinkedIn : SEULEMENT les offres d'emploi
+            if 'linkedin.com' in domain:
+                linkedin_job_patterns = ['/jobs/view/', '/jobs/collections/']
+                if any(pattern in path for pattern in linkedin_job_patterns):
+                    self.found_urls.add(url)
+                    return True
+                return False  # Rejeter tout le reste de LinkedIn
+            
+            # 1. Sites d'emploi classiques (validation stricte)
+            for job_site, patterns in known_job_sites.items():
+                if job_site in domain:
+                    if any(pattern in path for pattern in patterns):
+                        self.found_urls.add(url)
+                        return True
+            
+            # 2. NOUVEAUTÉ: Pages careers/jobs d'entreprises (TRÈS INCLUSIF)
+            # Accepter TOUTE URL avec mots-clés emploi (sauf exclusions)
             if any(keyword in path for keyword in job_keywords):
                 self.found_urls.add(url)
                 return True
+            
+            # 3. Validation dans le titre/paramètres (pour pages enterprises)
+            if any(keyword in query for keyword in ['job', 'emploi', 'career', 'poste']):
+                self.found_urls.add(url)
+                return True
+            
+            # 4. Patterns spéciaux pour startups/entreprises tech
+            tech_patterns = [
+                # Domaines startups courrants
+                '.io/', '.co/', '.ai/', '.tech/',
+                # Paths entreprises
+                'company.com/careers', 'startup.fr/jobs', 'tech.ch/team'
+            ]
+            
+            full_url = url.lower()
+            if any(pattern in full_url for pattern in tech_patterns):
+                if any(keyword in full_url for keyword in job_keywords):
+                    self.found_urls.add(url)
+                    return True
+            
+            # Vérifier dans les paramètres de requête (pour certains sites)
+            if 'job' in query or 'emploi' in query or 'offre' in query:
+                if not any(excluded in path for excluded in excluded_keywords):
+                    self.found_urls.add(url)
+                    return True
             
             return False
             
