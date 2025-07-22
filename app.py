@@ -39,6 +39,36 @@ SCRAPER_STATUS = {
     'error': None
 }
 
+# Log buffer pour la console en temps réel
+CONSOLE_LOGS = []
+MAX_CONSOLE_LOGS = 100
+
+def add_console_log(level: str, message: str):
+    """
+    Ajoute un log à la console en temps réel
+    
+    Args:
+        level (str): Niveau du log (info, success, error, warning)
+        message (str): Message du log
+    """
+    global CONSOLE_LOGS
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    
+    log_entry = {
+        'timestamp': timestamp,
+        'level': level,
+        'message': message
+    }
+    
+    CONSOLE_LOGS.append(log_entry)
+    
+    # Limiter le nombre de logs en mémoire
+    if len(CONSOLE_LOGS) > MAX_CONSOLE_LOGS:
+        CONSOLE_LOGS.pop(0)
+    
+    # Afficher aussi dans la console serveur
+    print(f"[{timestamp}] {level.upper()}: {message}")
+
 class DatabaseManager:
     """
     Gestionnaire de base de données SQLite
@@ -282,6 +312,10 @@ class APIWebScraper:
         self.progress_callback = progress_callback
         self.session_start_time = None
         self.session_data = {}
+        
+        # Clear console logs at start
+        global CONSOLE_LOGS
+        CONSOLE_LOGS.clear()
     
     def update_progress(self, progress: int, task: str):
         """
@@ -293,6 +327,10 @@ class APIWebScraper:
         """
         SCRAPER_STATUS['progress'] = progress
         SCRAPER_STATUS['current_task'] = task
+        
+        # Log détaillé pour la console dashboard
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] {progress:3d}% | {task}")
         
         if self.progress_callback:
             self.progress_callback(progress, task)
@@ -317,51 +355,78 @@ class APIWebScraper:
             }
             
             self.update_progress(5, "🔧 Chargement de la configuration...")
+            add_console_log('info', '🔧 Chargement de la configuration sécurisée...')
+            add_console_log('info', f'📍 Localisations configurées: {", ".join(self.api_scraper.config["search_criteria"]["locations"][:3])}...')
+            add_console_log('info', f'🔍 {len(self.api_scraper.config["search_criteria"]["keywords"])} mots-clés configurés')
             time.sleep(1)
             
             self.update_progress(10, "🚀 Initialisation du scraper API...")
+            add_console_log('success', '🚀 Scraper API initialisé avec succès')
+            add_console_log('info', '🌐 Mode: APIs publiques + scraping léger RSS')
             time.sleep(1)
             
             # Phase 1: Scraping Indeed RSS
             self.update_progress(15, "📡 Recherche via Indeed RSS...")
+            add_console_log('info', '📡 Démarrage des requêtes Indeed RSS...')
             indeed_jobs = self.api_scraper.scrape_indeed_rss()
             
             self.update_progress(30, f"✅ Indeed: {len(indeed_jobs)} offres trouvées")
+            add_console_log('success', f'📊 Indeed RSS: {len(indeed_jobs)} offres collectées')
             
             # Phase 2: APIs alternatives
             self.update_progress(40, "🔍 Recherche via APIs alternatives...")
+            add_console_log('info', '🔍 Recherche via APIs alternatives (Adzuna)...')
             try:
                 github_jobs = self.api_scraper.scrape_github_jobs()
                 self.update_progress(55, f"✅ APIs: {len(github_jobs)} offres trouvées")
+                add_console_log('success', f'📊 APIs alternatives: {len(github_jobs)} offres collectées')
             except Exception as e:
-                print(f"⚠️ APIs non disponibles: {e}")
+                add_console_log('warning', f'⚠️ APIs alternatives non disponibles: {e}')
                 github_jobs = []
             
             self.update_progress(60, "🚀 Recherche startups et entreprises...")
+            add_console_log('info', '🚀 Collecte d\'offres startups et entreprises locales...')
             try:
                 startup_jobs = self.api_scraper.scrape_startups_jobs()
                 self.update_progress(70, f"✅ Startups: {len(startup_jobs)} offres trouvées")
+                add_console_log('success', f'📊 Startups: {len(startup_jobs)} offres collectées')
             except Exception as e:
-                print(f"⚠️ Startups non disponibles: {e}")
+                add_console_log('warning', f'⚠️ Startups non disponibles: {e}')
                 startup_jobs = []
             
             self.update_progress(75, "🔄 Combinaison des résultats...")
+            add_console_log('info', '🔄 Combinaison et analyse des résultats...')
             
             # Combinaison des résultats
             all_jobs = indeed_jobs + github_jobs + startup_jobs
+            add_console_log('info', f'📊 Total brut: {len(all_jobs)} offres collectées')
             
             if not all_jobs:
+                add_console_log('error', '❌ Aucune offre trouvée via les APIs')
                 raise Exception("❌ Aucune offre trouvée via les APIs")
             
             self.update_progress(80, f"🔄 Déduplication de {len(all_jobs)} offres...")
+            add_console_log('info', f'🔄 Déduplication de {len(all_jobs)} offres...')
             unique_jobs = self.api_scraper.deduplicate_jobs(all_jobs)
+            add_console_log('success', f'✅ {len(unique_jobs)} offres uniques après déduplication')
             
             self.update_progress(85, "📊 Calcul des scores de compatibilité...")
+            add_console_log('info', '📊 Calcul des scores de pertinence...')
+            add_console_log('info', '🎯 Critères: Compétences (40%) + Localisation (30%) + Télétravail (15%) + Source (15%)')
             
             # Sauvegarde en base et calcul des scores
             saved_count = 0
-            for job in unique_jobs:
-                job.match_score = self.api_scraper.calculate_match_score(job)
+            print(f"\n📊 ANALYSE DE PERTINENCE DES OFFRES")
+            print("=" * 50)
+            
+            for i, job in enumerate(unique_jobs, 1):
+                # Analyse détaillée pour les 5 meilleures offres potentielles
+                verbose = i <= 5
+                job.match_score = self.api_scraper.calculate_match_score(job, verbose=verbose)
+                
+                if verbose:
+                    add_console_log('info', f'📊 Analyse #{i}: {job.title} | {job.company} → {job.match_score:.1f}%')
+                    print(f"\n{'='*50}")
                 
                 # Conversion en dict pour la base de données
                 job_dict = {
@@ -385,9 +450,38 @@ class APIWebScraper:
                         print(f"⚠️ Erreur sauvegarde: {e}")
             
             self.update_progress(95, f"💾 {saved_count} nouvelles offres sauvegardées")
+            add_console_log('success', f'💾 {saved_count} nouvelles offres sauvegardées en base')
             
             # Tri par score
             unique_jobs.sort(key=lambda x: x.match_score, reverse=True)
+            
+            # Affichage du résumé final
+            print(f"\n🎯 RÉSUMÉ FINAL DU SCRAPING")
+            print("=" * 50)
+            print(f"📊 Total des offres trouvées: {len(all_jobs)}")
+            print(f"🔄 Offres uniques après déduplication: {len(unique_jobs)}")
+            print(f"💾 Nouvelles offres sauvegardées: {saved_count}")
+            
+            if unique_jobs:
+                add_console_log('success', f'🏆 TOP 5 DES MEILLEURES OFFRES:')
+                print(f"\n🏆 TOP 5 DES MEILLEURES OFFRES:")
+                for i, job in enumerate(unique_jobs[:5], 1):
+                    print(f"  {i}. {job.title} | {job.company} | {job.match_score:.1f}%")
+                    print(f"     🔗 {job.url}")
+                    add_console_log('info', f'  {i}. {job.title} | {job.company} | {job.match_score:.1f}%')
+                
+                # Statistiques des scores
+                scores = [job.match_score for job in unique_jobs]
+                high_scores = len([s for s in scores if s >= 80])
+                medium_scores = len([s for s in scores if 60 <= s < 80])
+                low_scores = len([s for s in scores if s < 60])
+                
+                print(f"\n📊 RÉPARTITION DES SCORES:")
+                print(f"  🟢 Excellent (≥80%): {high_scores} offres")
+                print(f"  🟡 Bon (60-79%): {medium_scores} offres")
+                print(f"  🔴 Faible (<60%): {low_scores} offres")
+                
+                add_console_log('info', f'📊 Répartition: {high_scores} excellentes (≥80%), {medium_scores} bonnes (60-79%), {low_scores} faibles (<60%)')
             
             # Sauvegarde de la session
             session_end_time = datetime.now()
@@ -410,12 +504,17 @@ class APIWebScraper:
             if unique_jobs:
                 best_score = unique_jobs[0].match_score
                 self.update_progress(100, f"🎉 Terminé ! {len(unique_jobs)} offres (meilleur score: {best_score:.1f}%) en {duration_str}")
+                add_console_log('success', f'🎉 SCRAPING TERMINÉ avec succès !')
+                add_console_log('info', f'⏱️ Durée: {duration_str} | 🏆 Meilleur score: {best_score:.1f}%')
             else:
                 self.update_progress(100, f"✅ Terminé en {duration_str} - Aucune nouvelle offre")
+                add_console_log('info', f'✅ Scraping terminé en {duration_str} - Aucune nouvelle offre')
             
         except Exception as e:
             SCRAPER_STATUS['error'] = str(e)
             SCRAPER_STATUS['progress'] = 0  # Reset progress on error
+            add_console_log('error', f'❌ ERREUR CRITIQUE: {str(e)}')
+            add_console_log('error', f'💥 Le scraping a été interrompu')
             self.session_data.update({
                 'end_time': datetime.now().isoformat(),
                 'status': 'error',
@@ -537,6 +636,16 @@ def scraping_status():
     API pour récupérer le statut du scraping
     """
     return jsonify(SCRAPER_STATUS)
+
+@app.route('/console_logs')
+def console_logs():
+    """
+    API pour récupérer les logs de console en temps réel
+    """
+    return jsonify({
+        'logs': CONSOLE_LOGS,
+        'total': len(CONSOLE_LOGS)
+    })
 
 @app.route('/sessions')
 def sessions():

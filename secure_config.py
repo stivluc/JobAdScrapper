@@ -73,7 +73,9 @@ class SecureConfig:
         key_mappings = {
             'adzuna_app_id': 'ADZUNA_APP_ID',
             'adzuna_app_key': 'ADZUNA_APP_KEY',
-            'rapidapi': 'RAPIDAPI_KEY',
+            'rapidapi_key': 'RAPIDAPI_KEY',
+            'rapidapi_app': 'RAPIDAPI_APP',
+            'rapidapi': 'RAPIDAPI_KEY',  # Backward compatibility
             'github': 'GITHUB_TOKEN',
             'linkedin': 'LINKEDIN_API_KEY'
         }

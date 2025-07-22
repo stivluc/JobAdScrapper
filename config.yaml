@@ -1,7 +1,7 @@
 # Configuration du scraper d'emploi
 user_profile:
   # Compétences principales (séparées par des virgules)
-  skills: 'Python, JavaScript, React, Node.js, TypeScript, SQL, PostgreSQL, MongoDB, Docker, Kubernetes, AWS, GCP, Git, CI/CD, Django, Flask, FastAPI, Vue.js, HTML, CSS, Linux, DevOps, Machine Learning, Data Science'
+  skills: 'Python, JavaScript, React, Node.js, Next.js, TypeScript, SQL, PostgreSQL, MongoDB, Docker, Kubernetes, Git, CI/CD, Django, Flask, FastAPI, Vue.js, HTML, CSS'
 
   # Expérience en années
   experience_years: 4
@@ -14,15 +14,12 @@ search_criteria:
   # Mots-clés pour le poste recherché
   keywords:
     [
-      'ingénieur logiciel',
+      'développeur Next.js',
       'développeur full stack',
-      'software engineer',
       'full stack developer',
-      'développeur web',
       'tech lead',
-      'senior developer',
       'python developer',
-      'javascript developer',
+      'Ingénieur Full Stack Next.js',
       'Développeur React',
       'Ingénieur Full Stack',
     ]
@@ -41,7 +38,6 @@ search_criteria:
       'Métropole Lilloise',
       'Nord, France',
       'Suisse romande',
-      'télétravail',
       'full remote',
     ]
 
@@ -57,49 +53,50 @@ search_criteria:
   # Télétravail accepté
   remote_ok: true
 
-# Sites à scraper
-job_sites:
-  - name: 'Indeed'
-    url: 'https://fr.indeed.com'
-    enabled: true
+# Configuration des APIs et sources de données
+api_settings:
+  # Sources d'emploi activées (Adzuna, Indeed RSS, RapidAPI)
+  enabled_sources:
+    - 'adzuna_api' # API Adzuna (nécessite clés API dans .env)
+    - 'indeed_rss' # Indeed RSS (gratuit, pas de clé nécessaire)
+    - 'rapidapi_jobs' # Jobs via RapidAPI (nécessite clé RapidAPI dans .env)
 
-  - name: 'LinkedIn'
-    url: 'https://www.linkedin.com'
-    enabled: false # Nécessite une authentification
+  # Limites par source pour éviter les quotas
+  max_results_per_source: 25
 
-  - name: 'Welcome to the Jungle'
-    url: 'https://www.welcometothejungle.com'
-    enabled: true
+  # Délais entre requêtes API (secondes)
+  api_delay: 2
+
+  # Timeout pour les requêtes API (secondes)
+  api_timeout: 15
 
 # Paramètres du scraper
 scraper_settings:
-  # Délai entre les requêtes (en secondes)
-  delay_between_requests: 2
+  # Nombre maximum total d'offres à traiter
+  max_jobs_total: 100
 
-  # Nombre maximum d'offres à récupérer par site
-  max_jobs_per_site: 50
+  # Score minimum de pertinence à conserver (0-100)
+  min_match_score: 30
 
-  # Timeout pour les requêtes (en secondes)
-  request_timeout: 30
+  # Délai aléatoire entre sources pour éviter la détection
+  random_delay_min: 3
+  random_delay_max: 6
 
-  # User agent pour les requêtes
-  user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+  # User agent moderne pour les requêtes
+  user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-  # === NOUVEAUX PARAMÈTRES V2 ===
+# Critères de scoring avancé
+scoring_criteria:
+  # Poids des différents critères (total = 100%)
+  skills_weight: 40 # Correspondance des compétences
+  location_weight: 30 # Proximité géographique
+  remote_weight: 15 # Possibilité télétravail
+  source_weight: 15 # Fiabilité de la source
 
-  # Paramètres de recherche Google
-  max_google_queries: 15 # Nombre maximum de requêtes Google
-  max_results_per_query: 30 # Résultats max par requête Google
-  delay_between_queries: 8 # Délai entre requêtes Google (secondes)
-
-  # Paramètres généraux v2
-  max_jobs_total: 150 # Nombre maximum d'offres à traiter
-  headless: false # Mode sans interface (true = plus rapide, false = plus discret)
-
-  # Paramètres anti-détection
-  random_delays: true # Délais aléatoires entre actions
-  rotate_user_agents: true # Rotation des User-Agents
-
-  # Paramètres de performance
-  parallel_scraping: false # Scraping parallèle (expérimental)
-  batch_size: 10 # Taille des lots pour le scraping
+  # Bonus pour certains mots-clés
+  bonus_keywords:
+    - 'senior': 10
+    - 'lead': 15
+    - 'architect': 20
+    - 'remote': 15
+    - 'télétravail': 15

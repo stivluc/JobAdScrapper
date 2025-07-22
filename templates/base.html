@@ -467,21 +467,26 @@
 
         /* Config Editor */
         .config-editor {
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-            font-size: 0.875rem;
-            background-color: #1a1a1a;
-            color: #f8f8f2;
-            border: 1px solid var(--border-light);
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+            font-size: 14px !important;
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid var(--border-light) !important;
             border-radius: 0.5rem;
             padding: 1.5rem;
             resize: vertical;
             min-height: 400px;
             width: 100%;
+            line-height: 1.4;
+            tab-size: 2;
         }
         
         .config-editor:focus {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
             outline: 2px solid var(--accent-blue);
             outline-offset: 2px;
+            box-shadow: none !important;
         }
 
         /* Responsive */
@@ -903,37 +908,54 @@
                         }
                     }
                     
-                    // Mise à jour des logs en temps réel
-                    const logConsole = document.getElementById('log-console');
-                    if (logConsole && data.current_task && data.running) {
-                        const currentTime = new Date().toLocaleTimeString();
-                        const lastLogEntry = logConsole.querySelector('.log-entry:last-child .log-text');
-                        
-                        // Ajouter uniquement si le message a changé
-                        if (!lastLogEntry || lastLogEntry.textContent !== data.current_task) {
-                            const logEntry = document.createElement('div');
-                            logEntry.className = 'log-entry';
-                            
-                            const logClass = data.error ? 'log-error' : 
-                                           data.progress === 100 ? 'log-success' : 'log-info';
-                            
-                            logEntry.innerHTML = `
-                                <span class="log-time">${currentTime}</span>
-                                <span class="log-text ${logClass}">${data.current_task}</span>
-                            `;
-                            
-                            logConsole.appendChild(logEntry);
-                            logConsole.scrollTop = logConsole.scrollHeight;
-                            
-                            // Limiter à 50 entrées pour éviter la surcharge
-                            const entries = logConsole.querySelectorAll('.log-entry');
-                            if (entries.length > 50) {
-                                entries[0].remove();
-                            }
-                        }
-                    }
+                    // Mise à jour des logs détaillés si la console est présente
+                    updateDetailedLogs();
                 })
                 .catch(error => console.error('Erreur lors de la mise à jour du statut:', error));
+        }
+        
+        // Fonction pour mettre à jour les logs détaillés
+        function updateDetailedLogs() {
+            const logConsole = document.getElementById('log-console');
+            if (!logConsole) return;
+            
+            fetch('/console_logs')
+                .then(response => response.json())
+                .then(data => {
+                    // Vider la console et ajouter tous les logs
+                    logConsole.innerHTML = '';
+                    
+                    data.logs.forEach(log => {
+                        const logEntry = document.createElement('div');
+                        logEntry.className = 'log-entry';
+                        
+                        let logClass = 'log-info';
+                        switch(log.level) {
+                            case 'success':
+                                logClass = 'log-success';
+                                break;
+                            case 'error':
+                                logClass = 'log-error';
+                                break;
+                            case 'warning':
+                                logClass = 'log-text';
+                                break;
+                            default:
+                                logClass = 'log-info';
+                        }
+                        
+                        logEntry.innerHTML = `
+                            <span class="log-time">${log.timestamp}</span>
+                            <span class="log-text ${logClass}">${log.message}</span>
+                        `;
+                        
+                        logConsole.appendChild(logEntry);
+                    });
+                    
+                    // Scroll vers le bas pour voir les derniers logs
+                    logConsole.scrollTop = logConsole.scrollHeight;
+                })
+                .catch(error => console.error('Erreur lors de la récupération des logs:', error));
         }
         
         // Mise à jour toutes les 2 secondes

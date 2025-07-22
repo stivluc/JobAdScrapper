@@ -122,7 +122,7 @@
                     
                     <div class="d-flex justify-content-between">
                         <div>
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success me-3">
                                 <i class="fas fa-save"></i> Sauvegarder la configuration
                             </button>
                             <button type="button" class="btn btn-outline-secondary" onclick="resetConfig()">
@@ -130,7 +130,7 @@
                             </button>
                         </div>
                         <div>
-                            <button type="button" class="btn btn-outline-info" onclick="validateYaml()">
+                            <button type="button" class="btn btn-outline-info me-2" onclick="validateYaml()">
                                 <i class="fas fa-check"></i> Valider YAML
                             </button>
                             <button type="button" class="btn btn-outline-warning" onclick="showTemplate()">
@@ -171,12 +171,12 @@
                         </ul>
                     </div>
                     <div class="col-md-4">
-                        <h6><i class="fas fa-cogs"></i> Paramètres scraper</h6>
+                        <h6><i class="fas fa-cloud"></i> Configuration API</h6>
                         <ul class="list-unstyled">
-                            <li><strong>max_google_queries:</strong> Nombre de requêtes Google</li>
-                            <li><strong>max_jobs_total:</strong> Nombre max d'offres</li>
-                            <li><strong>delay_between_queries:</strong> Délai anti-détection</li>
-                            <li><strong>headless:</strong> Mode invisible (true/false)</li>
+                            <li><strong>enabled_sources:</strong> Sources d'emploi activées</li>
+                            <li><strong>max_results_per_source:</strong> Limite par API</li>
+                            <li><strong>api_delay:</strong> Délai entre requêtes API</li>
+                            <li><strong>min_match_score:</strong> Score minimum (0-100)</li>
                         </ul>
                     </div>
                 </div>
@@ -201,24 +201,39 @@
             </div>
             <div class="modal-body">
                 <p>Voici un template de base pour la configuration :</p>
-                <pre><code class="language-yaml" id="template-code"># Configuration du scraper d'emploi
+                <pre><code class="language-yaml" id="template-code"># Configuration du scraper d'emploi moderne
 user_profile:
-  skills: "Python, JavaScript, React, Node.js, SQL"
+  skills: "Python, JavaScript, React, Node.js, TypeScript, SQL"
   experience_years: 5
-  education_level: "Master"
+  education_level: "Ingénieur"
 
 search_criteria:
-  keywords: ["développeur", "ingénieur logiciel", "full stack"]
-  locations: ["Paris, France", "Lyon, France", "télétravail"]
-  salary_min: 45000
-  salary_max: 80000
+  keywords: ["développeur full stack", "ingénieur logiciel", "tech lead"]
+  locations: ["Genève, Suisse", "Lausanne, Suisse", "télétravail"]
+  salary_min: 50000
+  salary_max: 120000
   remote_ok: true
 
+api_settings:
+  enabled_sources:
+    - 'adzuna_api'
+    - 'indeed_rss'
+    - 'rapidapi_jobs'
+  max_results_per_source: 25
+  api_delay: 2
+  api_timeout: 15
+
 scraper_settings:
-  max_google_queries: 15
   max_jobs_total: 100
-  delay_between_queries: 8
-  headless: false</code></pre>
+  min_match_score: 30
+  random_delay_min: 3
+  random_delay_max: 6
+
+scoring_criteria:
+  skills_weight: 40
+  location_weight: 30
+  remote_weight: 15
+  source_weight: 15</code></pre>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
@@ -253,12 +268,22 @@ function validateYaml() {
             return;
         }
         
+        if (!content.includes('api_settings:')) {
+            alert('Section "api_settings" manquante');
+            return;
+        }
+        
         if (!content.includes('scraper_settings:')) {
             alert('Section "scraper_settings" manquante');
             return;
         }
         
-        alert('✅ Configuration valide (validation de base)');
+        if (!content.includes('scoring_criteria:')) {
+            alert('Section "scoring_criteria" manquante');
+            return;
+        }
+        
+        alert('✅ Configuration API moderne valide!');
         
     } catch (error) {
         alert('❌ Erreur de validation: ' + error.message);
@@ -304,32 +329,34 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-.config-editor {
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.4;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    tab-size: 2;
-}
-
-.config-editor:focus {
-    background-color: white;
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-}
-
+/* Code preview styling */
 pre code {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border: 1px solid var(--border-light);
     border-radius: 0.375rem;
     padding: 1rem;
     font-size: 13px;
     line-height: 1.3;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
 .badge {
     font-size: 0.8em;
+}
+
+/* Additional button spacing improvements */
+.btn + .btn {
+    margin-left: 0.75rem !important;
+}
+
+/* Specific button spacing overrides */
+.btn.me-3 + .btn {
+    margin-left: 1rem !important;
+}
+
+.btn.me-2 + .btn {
+    margin-left: 0.75rem !important;
 }
 </style>
 {% endblock %}

@@ -128,6 +128,45 @@
     </div>
 </div>
 
+<!-- Console de logs en temps réel -->
+{% if scraper_status.running %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-terminal"></i> Console de scraping en temps réel</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="log-console" id="log-console">
+                    <div class="log-entry">
+                        <span class="log-time" id="init-time"></span>
+                        <span class="log-text log-info">Console de logs initialisée...</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-time" id="start-time"></span>
+                        <span class="log-text log-success">🚀 Scraping démarré - Les logs détaillés apparaîtront ici</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-time" id="detail-time"></span>
+                        <span class="log-text log-info">📊 Affichage des requêtes API, résultats et scores de pertinence...</span>
+                    </div>
+                </div>
+
+                <script>
+                // Set current time for initial log entries
+                document.addEventListener('DOMContentLoaded', function() {
+                    const currentTime = new Date().toLocaleTimeString();
+                    document.getElementById('init-time').textContent = currentTime;
+                    document.getElementById('start-time').textContent = currentTime;
+                    document.getElementById('detail-time').textContent = currentTime;
+                });
+                </script>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Offres récentes -->
 <div class="row">
     <div class="col-md-8">

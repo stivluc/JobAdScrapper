@@ -132,24 +132,44 @@ class APIJobScraper:
                             continue
                         
                         print(f"🔍 Recherche Adzuna: {keyword} à {where_param} ({country})")
+                        print(f"    📡 URL API: {url}")
+                        print(f"    📋 Paramètres: {params}")
                         
                         response = self.session.get(url, params=params, timeout=10)
+                        print(f"    📊 Status: {response.status_code} | Taille: {len(response.text)} bytes")
                         
                         if response.status_code == 200:
                             data = response.json()
+                            total_results = len(data.get('results', []))
+                            print(f"    ✅ {total_results} résultats reçus d'Adzuna")
                             
-                            for result in data.get('results', []):
+                            for i, result in enumerate(data.get('results', []), 1):
+                                job_title = result.get('title', '')
+                                company_data = result.get('company', {})
+                                company_name = company_data.get('display_name', '') if isinstance(company_data, dict) else str(company_data)
+                                location_data = result.get('location', {})
+                                job_location = location_data.get('display_name', '') if isinstance(location_data, dict) else str(location_data)
+                                job_url = result.get('redirect_url', '')
+                                salary_info = self.format_salary(result.get('salary_min'), result.get('salary_max'))
+                                
+                                print(f"    📍 {i:2d}. {job_title}")
+                                print(f"        🏢 {company_name} | 📍 {job_location}")
+                                print(f"        💰 {salary_info} | 🔗 {job_url[:50]}...")
+                                
                                 job = JobOffer(
-                                    title=result.get('title', ''),
-                                    company=result.get('company', {}).get('display_name', ''),
-                                    location=result.get('location', {}).get('display_name', ''),
-                                    salary=self.format_salary(result.get('salary_min'), result.get('salary_max')),
+                                    title=job_title,
+                                    company=company_name,
+                                    location=job_location,
+                                    salary=salary_info,
                                     description=result.get('description', ''),
-                                    url=result.get('redirect_url', ''),
+                                    url=job_url,
                                     source='Adzuna API',
                                     scraped_at=datetime.now().isoformat()
                                 )
                                 jobs.append(job)
+                        
+                        else:
+                            print(f"    ❌ Status {response.status_code}: {response.text[:100]}...")
                         
                         # Pause entre les requêtes
                         time.sleep(2)
@@ -270,6 +290,7 @@ class APIJobScraper:
                             rss_url = f"https://{config['domain']}/rss?q={query}&l={loc}&sort=date&limit=50"
                             
                             print(f"🔍 Indeed {config['country']}: {keyword} à {location}")
+                            print(f"    📡 RSS URL: {rss_url}")
                             
                             # Headers spécifiques pour Indeed
                             headers = {
@@ -280,11 +301,17 @@ class APIJobScraper:
                             }
                             
                             response = self.session.get(rss_url, headers=headers, timeout=15)
+                            print(f"    📊 Status: {response.status_code} | Content-Type: {response.headers.get('content-type', 'N/A')}")
                             
                             if response.status_code == 200 and 'xml' in response.headers.get('content-type', ''):
+                                print(f"    🔍 Parsing RSS XML ({len(response.text)} caractères)...")
                                 jobs_found = self.parse_indeed_rss(response.text, location, config['country'])
                                 jobs.extend(jobs_found)
-                                print(f"   → {len(jobs_found)} offres trouvées")
+                                print(f"    ✅ {len(jobs_found)} offres extraites du RSS")
+                                
+                                # Afficher quelques exemples d'offres
+                                for i, job in enumerate(jobs_found[:3], 1):
+                                    print(f"      📍 {i}. {job.title} | {job.company}")
                             else:
                                 print(f"   → Pas de RSS disponible ({response.status_code})")
                             
@@ -434,72 +461,91 @@ class APIJobScraper:
         
         return jobs
     
-    def scrape_startups_jobs(self) -> List[JobOffer]:
+    def scrape_rapidapi_jobs(self) -> List[JobOffer]:
         """
-        Scraper des sites de startups et entreprises tech
+        Scraper via RapidAPI JSearch (jobs API)
         """
         jobs = []
         
         try:
-            print("🚀 Recherche dans startups tech...")
+            print("🔍 Recherche via RapidAPI JSearch...")
             
-            # Sources publiques de jobs tech
-            startup_sources = [
-                {
-                    'name': 'AngelList',
-                    'base_url': 'https://angel.co/jobs',
-                    'search_params': {'keywords': ['Full Stack', 'Python', 'JavaScript']}
-                }
-            ]
+            # Check if RapidAPI key is available
+            if not (has_api_key('rapidapi_key') or has_api_key('rapidapi_app')):
+                print("⚠️ Clés RapidAPI non configurées - saut de cette source")
+                return jobs
             
-            # Pour l'instant, créons des offres réalistes basées sur des patterns réels
-            realistic_jobs = [
-                {
-                    'title': 'Développeur Full Stack Python/React',
-                    'company': 'TechnoSuisse SA',
-                    'location': 'Genève, Suisse',
-                    'salary': '85000 - 110000 CHF/an',
-                    'description': 'Nous recherchons un développeur expérimenté en Python, Django, React et PostgreSQL pour rejoindre notre équipe.',
-                    'url': 'https://technosuisse.ch/careers/fullstack-developer',
-                    'source': 'Entreprise locale'
-                },
-                {
-                    'title': 'Ingénieur Logiciel Senior',
-                    'company': 'Innovation Lab Lausanne',
-                    'location': 'Lausanne, Suisse',
-                    'salary': '95000 - 125000 CHF/an',
-                    'description': 'Développement d\'applications web modernes avec Node.js, React, TypeScript et MongoDB.',
-                    'url': 'https://innovationlab.ch/jobs/senior-software-engineer',
-                    'source': 'Site entreprise'
-                },
-                {
-                    'title': 'Développeur Frontend React',
-                    'company': 'StartupTech Lille',
-                    'location': 'Lille, France',
-                    'salary': '45000 - 55000 EUR/an',
-                    'description': 'Création d\'interfaces utilisateur modernes avec React, TypeScript, et intégration d\'APIs REST.',
-                    'url': 'https://startuptech-lille.fr/careers/react-developer',
-                    'source': 'Site startup'
-                }
-            ]
+            rapidapi_key = get_api_key('rapidapi_key')
+            keywords = self.search_config['keywords'][:3]  # Limit to avoid quota
             
-            for job_data in realistic_jobs:
-                job = JobOffer(
-                    title=job_data['title'],
-                    company=job_data['company'],
-                    location=job_data['location'],
-                    salary=job_data['salary'],
-                    description=job_data['description'],
-                    url=job_data['url'],
-                    source=job_data['source'],
-                    scraped_at=datetime.now().isoformat()
-                )
-                jobs.append(job)
+            # RapidAPI JSearch endpoint
+            url = "https://jsearch.p.rapidapi.com/search"
             
-            print(f"✅ Startups: {len(jobs)} offres trouvées")
+            for keyword in keywords:
+                try:
+                    # Search in Switzerland and France
+                    for country in ['Switzerland', 'France']:
+                        params = {
+                            'query': f'{keyword} {country}',
+                            'page': '1',
+                            'num_pages': '1',
+                            'date_posted': 'week'
+                        }
+                        
+                        headers = {
+                            'X-RapidAPI-Key': rapidapi_key,
+                            'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
+                        }
+                        
+                        print(f"🔍 RapidAPI: {keyword} en {country}")
+                        print(f"    📡 URL: {url}")
+                        print(f"    📋 Paramètres: {params}")
+                        
+                        response = self.session.get(url, headers=headers, params=params, timeout=15)
+                        print(f"    📊 Status: {response.status_code} | Taille: {len(response.text)} bytes")
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            job_results = data.get('data', [])
+                            print(f"    ✅ {len(job_results)} résultats reçus de RapidAPI")
+                            
+                            for i, result in enumerate(job_results, 1):
+                                job_title = result.get('job_title', '')
+                                employer_name = result.get('employer_name', '')
+                                job_location = result.get('job_city', '') + ', ' + result.get('job_country', '')
+                                job_url = result.get('job_apply_link', '')
+                                job_description = result.get('job_description', '')
+                                
+                                print(f"    📍 {i:2d}. {job_title}")
+                                print(f"        🏢 {employer_name} | 📍 {job_location}")
+                                print(f"        🔗 {job_url[:50]}...")
+                                
+                                if job_url and job_url.startswith('http'):
+                                    job = JobOffer(
+                                        title=job_title,
+                                        company=employer_name,
+                                        location=job_location,
+                                        salary=result.get('job_salary', ''),
+                                        description=job_description[:400] if job_description else '',
+                                        url=job_url,
+                                        source='RapidAPI JSearch',
+                                        scraped_at=datetime.now().isoformat()
+                                    )
+                                    jobs.append(job)
+                        else:
+                            print(f"    ❌ Status {response.status_code}: {response.text[:100]}...")
+                        
+                        # Delay between requests
+                        time.sleep(2)
+                        
+                except Exception as e:
+                    print(f"⚠️ Erreur RapidAPI pour {keyword}: {e}")
+                    continue
+            
+            print(f"✅ RapidAPI: {len(jobs)} offres trouvées")
             
         except Exception as e:
-            print(f"❌ Erreur startup jobs: {e}")
+            print(f"❌ Erreur RapidAPI: {e}")
         
         return jobs
     
@@ -528,23 +574,29 @@ class APIJobScraper:
         else:
             return ""
     
-    def calculate_match_score(self, job: JobOffer) -> float:
+    def calculate_match_score(self, job: JobOffer, verbose: bool = False) -> float:
         """
-        Calcule le score de compatibilité
+        Calcule le score de compatibilité avec logging détaillé
         """
         score = 0
         total_criteria = 0
+        scoring_details = []
         
         # Compétences (40%)
         user_skills = [skill.strip().lower() for skill in 
                       self.search_config['skills'].split(',')]
         
         job_text = f"{job.title} {job.description}".lower()
-        skill_matches = sum(1 for skill in user_skills if skill in job_text)
+        matched_skills = [skill for skill in user_skills if skill in job_text]
+        skill_matches = len(matched_skills)
         
         if user_skills:
-            score += (skill_matches / len(user_skills)) * 40
+            skill_score = (skill_matches / len(user_skills)) * 40
+            score += skill_score
             total_criteria += 40
+            scoring_details.append(f"Compétences: {skill_matches}/{len(user_skills)} = {skill_score:.1f}/40")
+            if verbose and matched_skills:
+                scoring_details.append(f"  Compétences trouvées: {', '.join(matched_skills[:5])}")
         
         # Localisation (30%)
         # Construire la liste des localisations utilisateur depuis la config
@@ -562,12 +614,15 @@ class APIJobScraper:
         
         score += location_score
         total_criteria += 30
+        scoring_details.append(f"Localisation: {location_score:.1f}/30")
         
         # Télétravail (15%)
         remote_keywords = ['télétravail', 'remote', 'distance', 'hybride']
-        if any(keyword in job_text for keyword in remote_keywords):
-            score += 15
+        remote_found = [kw for kw in remote_keywords if kw in job_text]
+        remote_score = 15 if remote_found else 0
+        score += remote_score
         total_criteria += 15
+        scoring_details.append(f"Télétravail: {remote_score}/15" + (f" ({', '.join(remote_found)})" if remote_found else ""))
         
         # Source fiable (15%)
         source_scores = {
@@ -576,10 +631,20 @@ class APIJobScraper:
             'Jobs.ch API': 10,
             'LinkedIn Sample': 8
         }
-        score += source_scores.get(job.source, 5)
+        source_score = source_scores.get(job.source, 5)
+        score += source_score
         total_criteria += 15
+        scoring_details.append(f"Source: {source_score}/15 ({job.source})")
         
-        return (score / total_criteria) * 100 if total_criteria > 0 else 0
+        final_score = (score / total_criteria) * 100 if total_criteria > 0 else 0
+        
+        if verbose:
+            print(f"    📊 Analyse de pertinence pour: {job.title}")
+            for detail in scoring_details:
+                print(f"      {detail}")
+            print(f"      🎯 Score final: {final_score:.1f}%")
+        
+        return final_score
     
     def deduplicate_jobs(self, jobs: List[JobOffer]) -> List[JobOffer]:
         """
@@ -608,27 +673,39 @@ class APIJobScraper:
         
         all_jobs = []
         
-        # 1. Scraper via différentes sources API
-        print("\n📊 Phase 1: Collecte via APIs")
+        # 1. Scraper via différentes sources API (SOURCES RÉELLES UNIQUEMENT)
+        print("\n📊 Phase 1: Collecte via APIs réelles")
         print("=" * 40)
         
-        # Indeed RSS (le plus fiable)
-        indeed_jobs = self.scrape_indeed_rss()
-        all_jobs.extend(indeed_jobs)
+        # Adzuna API (principal - testé et fonctionnel)
+        try:
+            adzuna_jobs = self.scrape_adzuna_api()
+            all_jobs.extend(adzuna_jobs)
+            print(f"✅ Adzuna: {len(adzuna_jobs)} offres collectées")
+        except Exception as e:
+            print(f"⚠️ Adzuna API non disponible: {e}")
         
-        # GitHub/Alternative APIs
+        # RapidAPI JSearch (testé avec vraies clés)
+        try:
+            rapidapi_jobs = self.scrape_rapidapi_jobs()
+            all_jobs.extend(rapidapi_jobs)
+            print(f"✅ RapidAPI: {len(rapidapi_jobs)} offres collectées")
+        except Exception as e:
+            print(f"⚠️ RapidAPI non disponible: {e}")
+        
+        # GitHub/Alternative APIs (Adzuna avec d'autres mots-clés)
         try:
             github_jobs = self.scrape_github_jobs()
             all_jobs.extend(github_jobs)
+            print(f"✅ APIs alternatives: {len(github_jobs)} offres collectées")
         except Exception as e:
             print(f"⚠️ API alternative non disponible: {e}")
         
-        # Startups et entreprises locales
-        try:
-            startup_jobs = self.scrape_startups_jobs()
-            all_jobs.extend(startup_jobs)
-        except Exception as e:
-            print(f"⚠️ Startups non disponibles: {e}")
+        # Indeed RSS DÉSACTIVÉ (bloqué par 403 Forbidden)
+        print("❌ Indeed RSS: Désactivé (bloqué par Indeed - 403 Forbidden)")
+        
+        # FAKE STARTUPS DATA SUPPRIMÉ
+        print("❌ Fake startup data: Supprimé (générait de fausses offres avec des liens cassés)")
         
         if not all_jobs:
             print("❌ Aucune offre trouvée via les APIs")
